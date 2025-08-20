@@ -281,15 +281,19 @@ export class AuthService {
 
       const missingFields: string[] = []
       let completedFields = 0
-  // Reset password
-  static async resetPassword(email: string) {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset-password`,
-    })
+
+      requiredFields.forEach(field => {
+        const value = profile[field as keyof UserProfile]
+        if (!value || (Array.isArray(value) && value.length === 0)) {
+          missingFields.push(field)
+        } else {
+          completedFields++
+        }
+      })
 
       const completionPercentage = Math.round((completedFields / requiredFields.length) * 100)
       const isComplete = missingFields.length === 0 && profile.verified
-      requiredFields.forEach(field => {
+
       return {
         isComplete,
         missingFields,
@@ -300,17 +304,17 @@ export class AuthService {
       return { isComplete: false, missingFields: ['error'], completionPercentage: 0 }
     }
   }
-        const value = profile[field as keyof UserProfile]
-        if (!value || (Array.isArray(value) && value.length === 0)) {
-          missingFields.push(field)
+
+  // Reset password
+  static async resetPassword(email: string) {
     if (!this.validateBitsEmail(email)) {
       throw new Error('Please use your BITS email address')
     }
     
-        } else {
-          completedFields++
-        }
-      })
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    })
+    
     if (error) throw error
   }
   

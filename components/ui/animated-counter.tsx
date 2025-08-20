@@ -14,13 +14,13 @@ export function AnimatedCounter({ value, suffix = '', duration = 2 }: AnimatedCo
   const rounded = useTransform(count, (latest) => Math.round(latest))
 
   useEffect(() => {
-    const animation = animate(count, value, { duration })
-    return animation.stop
+    const controls = animate(count, value, { duration })
+    return controls.stop
   }, [count, value, duration])
 
   return (
     <motion.span>
-      <motion.span>{rounded}</motion.span>
+      {rounded}
       {suffix}
     </motion.span>
   )

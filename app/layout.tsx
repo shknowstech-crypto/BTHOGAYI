@@ -16,18 +16,18 @@ const poppins = Poppins({
 })
 
 export const metadata: Metadata = {
-  title: 'BITSPARK - Connect with BITS Students | AI-Powered Dating & Social App',
+  title: 'BITSPARK - Connect with BITS Students | AI-Powered Social & Dating App',
   description: 'Join BITSPARK - the exclusive social and dating platform for BITS Pilani students. AI matching, meaningful conversations, and genuine connections across all BITS campuses.',
   keywords: 'BITS dating app, BITS social network, college dating, student connections, AI matching, BITS Pilani, BITS Goa, BITS Hyderabad, BITS Dubai',
   authors: [{ name: 'BITSPARK Team' }],
   openGraph: {
     title: 'BITSPARK - Find Your Perfect Connection at BITS Pilani',
     description: 'The exclusive platform for BITS students to discover friendships, dates, and meaningful connections through AI-powered matching.',
-    url: 'https://bitspark.app',
+    url: 'https://bitspark.app', // BOILERPLATE LINK: Replace with actual domain
     siteName: 'BITSPARK',
     images: [
       {
-        url: '/og-image.jpg',
+        url: '/og-image.jpg', // BOILERPLATE LINK: Add actual OG image
         width: 1200,
         height: 630,
         alt: 'BITSPARK - Connect with BITS Students',
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'BITSPARK - Connect with BITS Students',
     description: 'AI-powered matching for BITS Pilani students across all campuses.',
-    images: ['/og-image.jpg'],
+    images: ['/og-image.jpg'], // BOILERPLATE LINK: Add actual Twitter image
   },
   robots: {
     index: true,
@@ -54,7 +54,7 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    google: 'your-google-verification-code',
+    google: 'your-google-verification-code', // BOILERPLATE LINK: Add actual Google verification code
   },
 }
 
@@ -67,8 +67,8 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${poppins.variable}`}>
       <head>
         <link rel="icon" href="/favicon.ico" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" /> {/* BOILERPLATE LINK: Add actual favicon files */}
+        <link rel="manifest" href="/manifest.json" /> {/* BOILERPLATE LINK: Add actual manifest file */}
         <meta name="theme-color" content="#8b5cf6" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
       </head>

@@ -108,8 +108,8 @@ export function CTASection() {
                 variant="romantic"
                 className="group"
                 onClick={() => {
-                  // Navigate to signup - will implement auth later
-                  console.log('Navigate to signup')
+                  // BOILERPLATE LINK: Navigate to signup page
+                  window.location.href = '/auth'
                 }}
               >
                 <Heart className="w-6 h-6 group-hover:animate-pulse" />

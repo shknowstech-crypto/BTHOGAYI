@@ -115,7 +115,8 @@ export function HeroSection() {
             size="xl"
             variant="romantic"
             onClick={() => {
-              document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })
+              // BOILERPLATE LINK: Navigate to signup page
+              window.location.href = '/auth'
             }}
           >
             Join BITSPARK Today <ArrowRight className="w-5 h-5" />

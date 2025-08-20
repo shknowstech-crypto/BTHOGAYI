@@ -131,28 +131,28 @@ export class MessagingService {
         icon: '📷',
         description: 'Continue chatting on Instagram DM',
         action: 'instagram',
-        url: 'https://instagram.com' // Replace with actual Instagram integration
+        url: 'https://instagram.com' // BOILERPLATE LINK: Replace with actual Instagram integration
       },
       {
         name: 'WhatsApp',
         icon: '💬',
         description: 'Move to WhatsApp for instant messaging',
         action: 'whatsapp',
-        url: 'https://wa.me' // Replace with actual WhatsApp integration
+        url: 'https://wa.me' // BOILERPLATE LINK: Replace with actual WhatsApp integration
       },
       {
         name: 'Discord',
         icon: '🎮',
         description: 'Join a Discord server together',
         action: 'discord',
-        url: 'https://discord.com' // Replace with actual Discord integration
+        url: 'https://discord.com' // BOILERPLATE LINK: Replace with actual Discord integration
       },
       {
         name: 'Phone',
         icon: '📱',
         description: 'Exchange phone numbers',
         action: 'phone',
-        url: '#' // This will trigger a modal for phone number exchange
+        url: '#' // BOILERPLATE LINK: This will trigger a modal for phone number exchange
       },
       {
         name: 'Continue on BITSPARK',
@@ -160,7 +160,7 @@ export class MessagingService {
         description: 'Upgrade to premium for unlimited messages',
         action: 'premium',
         premium: true,
-        url: '/premium' // Replace with actual premium upgrade page
+        url: '/premium' // BOILERPLATE LINK: Replace with actual premium upgrade page
       }
     ]
   }

@@ -27,7 +27,103 @@ export class AuthService {
     })
 
     if (error) throw error
+
+    // Create user profile after successful signup
+    if (data.user) {
+      await this.createUserProfile(data.user.id, {
+        bits_email: email,
+        display_name: userData.display_name || '',
+        student_id: userData.student_id || '',
+        campus: userData.campus || 'Pilani',
+        username: this.generateUsername(userData.display_name || ''),
+        year: userData.year || 1,
+        branch: userData.branch || '',
+        interests: userData.interests || [],
+        preferences: {
+          connect_similarity: 1,
+          dating_similarity: 1,
+          gender_preference: 'any',
+          age_range: [18, 30],
+          max_distance: 50
+        },
+        email_verified: false,
+        student_id_verified: false,
+        photo_verified: false,
+        verified: false,
+        is_active: true,
+        last_seen: new Date().toISOString(),
+        streak_count: 0
+      })
+    }
+
     return data
+  }
+
+  // Create user profile
+  private static async createUserProfile(userId: string, profileData: Partial<UserProfile>) {
+    const { error } = await supabase
+      .from('users')
+      .insert({
+        id: userId,
+        ...profileData
+      })
+
+    if (error) throw error
+  }
+
+  // Generate unique username
+  private static generateUsername(displayName: string): string {
+    const base = displayName.toLowerCase().replace(/[^a-z0-9]/g, '')
+    const random = Math.floor(Math.random() * 1000)
+    return `${base}${random}`
+  }
+
+  // Verify student ID
+  static async verifyStudentId(userId: string, studentIdPhoto: File): Promise<boolean> {
+    try {
+      // TODO: Implement actual student ID verification
+      // This would typically involve:
+      // 1. Upload photo to storage
+      // 2. Use OCR to extract student ID
+      // 3. Validate against BITS database
+      // 4. Update user verification status
+      
+      // For now, return true as placeholder
+      const { error } = await supabase
+        .from('users')
+        .update({ student_id_verified: true })
+        .eq('id', userId)
+      
+      if (error) throw error
+      return true
+    } catch (error) {
+      console.error('Error verifying student ID:', error)
+      return false
+    }
+  }
+
+  // Verify profile photo
+  static async verifyProfilePhoto(userId: string, photo: File): Promise<boolean> {
+    try {
+      // TODO: Implement actual photo verification
+      // This would typically involve:
+      // 1. Upload photo to storage
+      // 2. Use face detection to ensure it's a real person
+      // 3. Check against existing photos to prevent duplicates
+      // 4. Update user verification status
+      
+      // For now, return true as placeholder
+      const { error } = await supabase
+        .from('users')
+        .update({ photo_verified: true })
+        .eq('id', userId)
+      
+      if (error) throw error
+      return true
+    } catch (error) {
+      console.error('Error verifying profile photo:', error)
+      return false
+    }
   }
 
   // Sign in

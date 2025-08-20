@@ -22,9 +22,10 @@ export class MatchingAlgorithm {
     const set1 = new Set(interests1)
     const set2 = new Set(interests2)
     const intersection = new Set([...set1].filter(x => set2.has(x)))
-    const union = new Set([...set1, ...set2])
     
-    return intersection.size / union.size // Jaccard similarity
+    // Jaccard similarity
+    const union = new Set([...set1, ...set2])
+    return intersection.size / union.size
   }
 
   // Calculate personality compatibility
@@ -37,9 +38,10 @@ export class MatchingAlgorithm {
       campus: user1.campus === user2.campus ? 1 : 0.7,
       year: Math.max(0, 1 - Math.abs(user1.year - user2.year) * 0.2),
       branch: user1.branch === user2.branch ? 1 : 0.8,
+      age: user1.age && user2.age ? Math.max(0, 1 - Math.abs(user1.age - user2.age) * 0.1) : 0.5
     }
     
-    const baseScore = (factors.campus + factors.year + factors.branch) / 3
+    const baseScore = (factors.campus + factors.year + factors.branch + factors.age) / 4
     
     // For opposites attract, we invert some factors
     if (similarity === -1) {
@@ -47,6 +49,18 @@ export class MatchingAlgorithm {
     }
     
     return baseScore
+  }
+
+  // Calculate gender compatibility
+  static calculateGenderMatch(user1: UserProfile, user2: UserProfile): boolean {
+    const user1Pref = user1.preferences.gender_preference || 'any'
+    const user2Pref = user2.preferences.gender_preference || 'any'
+    
+    if (user1Pref === 'any' && user2Pref === 'any') return true
+    if (user1Pref === 'any' && user2.gender) return true
+    if (user2Pref === 'any' && user1.gender) return true
+    
+    return user1Pref === user2.gender && user2Pref === user1.gender
   }
 
   // Main compatibility scoring function
@@ -75,12 +89,22 @@ export class MatchingAlgorithm {
       if (!currentUser) throw new Error('User not found')
 
       // Get all other verified, active users
-      const { data: potentialMatches } = await supabase
+      let query = supabase
         .from('users')
         .select('*')
         .neq('id', criteria.userId)
         .eq('verified', true)
         .eq('is_active', true)
+      
+      // Apply gender filtering for dating
+      if (criteria.connectionType === 'date') {
+        const genderPref = currentUser.preferences.gender_preference
+        if (genderPref && genderPref !== 'any') {
+          query = query.eq('gender', genderPref)
+        }
+      }
+      
+      const { data: potentialMatches } = await query
 
       if (!potentialMatches) return []
 
@@ -101,6 +125,11 @@ export class MatchingAlgorithm {
       
       for (const candidate of potentialMatches) {
         if (excludeIds.has(candidate.id)) continue
+        
+        // Check gender compatibility for dating
+        if (criteria.connectionType === 'date' && !this.calculateGenderMatch(currentUser, candidate)) {
+          continue
+        }
 
         const compatibilityScore = this.calculateCompatibility(
           currentUser, 

@@ -50,6 +50,10 @@ export default function SettingsPage() {
     
     setSaving(true)
     try {
+      // Sync interests with user_interests table
+      const { InterestService } = await import('@/lib/interests')
+      await InterestService.syncUserInterests(user.id, formData.interests)
+      
       const updatedUser = await AuthService.updateUserProfile(user.id, {
         display_name: formData.display_name,
         bio: formData.bio,
@@ -59,9 +63,11 @@ export default function SettingsPage() {
       
       if (updatedUser) {
         setUser(updatedUser)
+        alert('Profile updated successfully!')
       }
     } catch (error) {
       console.error('Error updating profile:', error)
+      alert('Error updating profile. Please try again.')
     } finally {
       setSaving(false)
     }

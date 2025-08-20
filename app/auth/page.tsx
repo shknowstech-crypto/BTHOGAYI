@@ -40,12 +40,21 @@ export default function AuthPage() {
           }
         }
       } else {
+        // Validate BITS email format
+        if (!AuthService.validateBitsEmail(formData.email)) {
+          setError('Please use your BITS Pilani email address (@pilani.bits-pilani.ac.in)')
+          return
+        }
+        
         await AuthService.signUp(formData.email, formData.password, {
           display_name: formData.displayName,
           student_id: formData.studentId,
-          campus: formData.campus as any
+          campus: formData.campus as any,
+          branch: 'Computer Science', // Default - user can update later
+          year: 1, // Default - user can update later
+          interests: []
         })
-        setError('Please check your email to verify your account')
+        setError('Account created! Please check your email to verify your account, then sign in.')
       }
     } catch (err: any) {
       setError(err.message || 'An error occurred')

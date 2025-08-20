@@ -8,8 +8,25 @@ export interface ShipWithUsers extends Ship {
   otherUser: UserProfile // For received ships, this is the person you're shipped with
 }
 
+export interface ShipStats {
+  sent: {
+    total: number
+    accepted: number
+    pending: number
+    declined: number
+    successRate: number
+  }
+  received: {
+    total: number
+    accepted: number
+    pending: number
+    declined: number
+    responseRate: number
+  }
+}
+
 export class ShippingService {
-  // Create a new ship
+  // Enhanced ship creation with validation
   static async createShip(
     shipperId: string,
     user1Email: string,
@@ -18,10 +35,21 @@ export class ShippingService {
     isAnonymous: boolean = false
   ): Promise<boolean> {
     try {
+      // Validate BITS email format
+      const bitsEmailRegex = /^[a-zA-Z0-9._%+-]+@pilani\.bits-pilani\.ac\.in$/
+      if (!bitsEmailRegex.test(user1Email) || !bitsEmailRegex.test(user2Email)) {
+        throw new Error('Please use valid BITS email addresses')
+      }
+      
+      // Prevent self-shipping
+      if (user1Email === user2Email) {
+        throw new Error('Cannot ship a person with themselves')
+      }
+      
       // Get user IDs from emails
       const { data: users, error: userError } = await supabase
         .from('users')
-        .select('id, bits_email')
+        .select('id, bits_email, display_name, is_active')
         .in('bits_email', [user1Email, user2Email])
 
       if (userError) throw userError
@@ -34,6 +62,27 @@ export class ShippingService {
 
       if (!user1 || !user2) {
         throw new Error('Users not found')
+      }
+
+      // Check if users are active
+      if (!user1.is_active || !user2.is_active) {
+        throw new Error('One or both users are not active')
+      }
+      
+      // Prevent shipping the shipper themselves
+      if (user1.id === shipperId || user2.id === shipperId) {
+        throw new Error('Cannot ship yourself')
+      }
+
+      // Check if users are already connected
+      const { data: existingConnection } = await supabase
+        .from('connections')
+        .select('status')
+        .or(`and(user1_id.eq.${user1.id},user2_id.eq.${user2.id}),and(user1_id.eq.${user2.id},user2_id.eq.${user1.id})`)
+        .single()
+        
+      if (existingConnection && existingConnection.status === 'accepted') {
+        throw new Error('These users are already connected!')
       }
 
       // Check if ship already exists
@@ -51,7 +100,8 @@ export class ShippingService {
           user2_id: user2.id,
           message,
           is_anonymous: isAnonymous,
-          status: 'pending'
+          status: 'pending',
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
         })
         .select()
         .single()
@@ -59,7 +109,7 @@ export class ShippingService {
       if (error) throw error
 
       // Create notifications for both users
-      await this.createShipNotifications(user1.id, user2.id, shipperId, isAnonymous)
+      await this.createShipNotifications(user1.id, user2.id, shipperId, isAnonymous, message)
 
       return true
     } catch (error) {
@@ -112,7 +162,7 @@ export class ShippingService {
 
       return (data || []).map(ship => ({
         ...ship,
-        otherUser: ship.user1 // For sent ships, we don't need otherUser logic
+        otherUser: ship.user1 // For display purposes
       }))
     } catch (error) {
       console.error('Error getting sent ships:', error)
@@ -120,7 +170,7 @@ export class ShippingService {
     }
   }
 
-  // Respond to a ship (accept/decline)
+  // Enhanced ship response with connection creation
   static async respondToShip(shipId: string, action: 'accept' | 'decline'): Promise<boolean> {
     try {
       const { data, error } = await supabase
@@ -137,7 +187,10 @@ export class ShippingService {
 
       // If accepted, create a connection between the two users
       if (action === 'accept') {
-        await this.createConnectionFromShip(data)
+        const success = await this.createConnectionFromShip(data)
+        if (!success) {
+          throw new Error('Failed to create connection from ship')
+        }
       }
 
       // Notify the shipper about the response
@@ -150,8 +203,8 @@ export class ShippingService {
     }
   }
 
-  // Get ship statistics for a user
-  static async getShipStats(userId: string) {
+  // Enhanced ship statistics
+  static async getShipStats(userId: string): Promise<ShipStats> {
     try {
       const [sentShips, receivedShips] = await Promise.all([
         supabase
@@ -167,26 +220,88 @@ export class ShippingService {
       const sent = sentShips.data || []
       const received = receivedShips.data || []
 
+      const sentStats = {
+        total: sent.length,
+        accepted: sent.filter(s => s.status === 'accepted').length,
+        pending: sent.filter(s => s.status === 'pending').length,
+        declined: sent.filter(s => s.status === 'declined').length,
+        successRate: sent.length > 0 ? (sent.filter(s => s.status === 'accepted').length / sent.length) * 100 : 0
+      }
+      
+      const receivedStats = {
+        total: received.length,
+        accepted: received.filter(s => s.status === 'accepted').length,
+        pending: received.filter(s => s.status === 'pending').length,
+        declined: received.filter(s => s.status === 'declined').length,
+        responseRate: received.length > 0 ? ((received.filter(s => s.status !== 'pending').length) / received.length) * 100 : 0
+      }
+
       return {
-        sent: {
-          total: sent.length,
-          accepted: sent.filter(s => s.status === 'accepted').length,
-          pending: sent.filter(s => s.status === 'pending').length,
-          declined: sent.filter(s => s.status === 'declined').length
-        },
-        received: {
-          total: received.length,
-          accepted: received.filter(s => s.status === 'accepted').length,
-          pending: received.filter(s => s.status === 'pending').length,
-          declined: received.filter(s => s.status === 'declined').length
-        }
+        sent: sentStats,
+        received: receivedStats
       }
     } catch (error) {
       console.error('Error getting ship stats:', error)
       return {
-        sent: { total: 0, accepted: 0, pending: 0, declined: 0 },
-        received: { total: 0, accepted: 0, pending: 0, declined: 0 }
+        sent: { total: 0, accepted: 0, pending: 0, declined: 0, successRate: 0 },
+        received: { total: 0, accepted: 0, pending: 0, declined: 0, responseRate: 0 }
       }
+    }
+  }
+
+  // Get trending ships (popular matchmakers)
+  static async getTrendingShippers(limit: number = 10) {
+    try {
+      const { data, error } = await supabase
+        .from('ships')
+        .select(`
+          shipper_id,
+          status,
+          shipper:users!ships_shipper_id_fkey(display_name, username)
+        `)
+        .eq('status', 'accepted')
+        .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()) // Last 30 days
+
+      if (error) throw error
+
+      // Count successful ships per shipper
+      const shipperCounts: Record<string, { count: number; shipper: any }> = {}
+      
+      data?.forEach(ship => {
+        if (!shipperCounts[ship.shipper_id]) {
+          shipperCounts[ship.shipper_id] = { count: 0, shipper: ship.shipper }
+        }
+        shipperCounts[ship.shipper_id].count++
+      })
+
+      return Object.values(shipperCounts)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, limit)
+        .map(({ count, shipper }) => ({
+          shipper,
+          successfulShips: count
+        }))
+    } catch (error) {
+      console.error('Error getting trending shippers:', error)
+      return []
+    }
+  }
+
+  // Expire old ships
+  static async expireOldShips(): Promise<number> {
+    try {
+      const { data, error } = await supabase
+        .from('ships')
+        .update({ status: 'expired' })
+        .eq('status', 'pending')
+        .lt('expires_at', new Date().toISOString())
+        .select('id')
+
+      if (error) throw error
+      return data?.length || 0
+    } catch (error) {
+      console.error('Error expiring old ships:', error)
+      return 0
     }
   }
 
@@ -198,6 +313,7 @@ export class ShippingService {
         .select('id')
         .eq('shipper_id', shipperId)
         .or(`and(user1_id.eq.${user1Id},user2_id.eq.${user2Id}),and(user1_id.eq.${user2Id},user2_id.eq.${user1Id})`)
+        .neq('status', 'expired')
         .single()
 
       return data
@@ -210,7 +326,8 @@ export class ShippingService {
     user1Id: string,
     user2Id: string,
     shipperId: string,
-    isAnonymous: boolean
+    isAnonymous: boolean,
+    message: string
   ) {
     try {
       const { data: shipper } = await supabase
@@ -220,6 +337,7 @@ export class ShippingService {
         .single()
 
       const shipperName = isAnonymous ? 'Someone' : shipper?.display_name || 'Someone'
+      const messagePreview = message ? ` with message: "${message.substring(0, 50)}..."` : ''
 
       // Notify both users
       await Promise.all([
@@ -229,10 +347,11 @@ export class ShippingService {
             user_id: user1Id,
             type: 'ship',
             title: 'You\'ve been shipped!',
-            message: `${shipperName} thinks you'd be perfect with someone`,
+            message: `${shipperName} thinks you'd be perfect with someone${messagePreview}`,
             data: {
               shipper_id: shipperId,
-              is_anonymous: isAnonymous
+              is_anonymous: isAnonymous,
+              message: message
             }
           }),
         supabase
@@ -241,10 +360,11 @@ export class ShippingService {
             user_id: user2Id,
             type: 'ship',
             title: 'You\'ve been shipped!',
-            message: `${shipperName} thinks you'd be perfect with someone`,
+            message: `${shipperName} thinks you'd be perfect with someone${messagePreview}`,
             data: {
               shipper_id: shipperId,
-              is_anonymous: isAnonymous
+              is_anonymous: isAnonymous,
+              message: message
             }
           })
       ])
@@ -253,19 +373,22 @@ export class ShippingService {
     }
   }
 
-  private static async createConnectionFromShip(ship: Ship) {
+  private static async createConnectionFromShip(ship: Ship): Promise<boolean> {
     try {
       // Import ConnectionService to avoid circular dependency
       const { ConnectionService } = await import('./connections')
       
-      await ConnectionService.createConnection(
+      const connection = await ConnectionService.createConnection(
         ship.user1_id,
         ship.user2_id,
         'friend', // Ships create friend connections by default
-        0.8 // High compatibility score for accepted ships
+        0.85 // High compatibility score for accepted ships
       )
+      
+      return !!connection
     } catch (error) {
       console.error('Error creating connection from ship:', error)
+      return false
     }
   }
 
@@ -276,6 +399,8 @@ export class ShippingService {
     action: 'accept' | 'decline'
   ) {
     try {
+      const emoji = action === 'accept' ? '🎉' : '😔'
+      const actionText = action === 'accept' ? 'accepted' : 'declined'
       const { data: users } = await supabase
         .from('users')
         .select('display_name')
@@ -288,8 +413,8 @@ export class ShippingService {
         .insert({
           user_id: shipperId,
           type: 'ship',
-          title: `Ship ${action}ed!`,
-          message: `${userNames} ${action}ed your ship`,
+          title: `Ship ${actionText}! ${emoji}`,
+          message: `${userNames} ${actionText} your ship${action === 'accept' ? ' and are now connected!' : '.'}`,
           data: {
             action,
             user1_id: user1Id,

@@ -304,6 +304,14 @@ export default function MessagesPage() {
                           variant={platform.premium ? "romantic" : "secondary"}
                           size="sm"
                           className="flex items-center gap-2"
+                          onClick={() => {
+                            if (platform.url === '#') {
+                              // Handle phone number exchange modal
+                              alert('Phone number exchange feature - Replace with actual modal')
+                            } else {
+                              window.open(platform.url, '_blank')
+                            }
+                          }}
                         >
                           <span>{platform.icon}</span>
                           {platform.name}

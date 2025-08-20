@@ -130,32 +130,37 @@ export class MessagingService {
         name: 'Instagram',
         icon: '📷',
         description: 'Continue chatting on Instagram DM',
-        action: 'instagram'
+        action: 'instagram',
+        url: 'https://instagram.com' // Replace with actual Instagram integration
       },
       {
         name: 'WhatsApp',
         icon: '💬',
         description: 'Move to WhatsApp for instant messaging',
-        action: 'whatsapp'
+        action: 'whatsapp',
+        url: 'https://wa.me' // Replace with actual WhatsApp integration
       },
       {
         name: 'Discord',
         icon: '🎮',
         description: 'Join a Discord server together',
-        action: 'discord'
+        action: 'discord',
+        url: 'https://discord.com' // Replace with actual Discord integration
       },
       {
         name: 'Phone',
         icon: '📱',
         description: 'Exchange phone numbers',
-        action: 'phone'
+        action: 'phone',
+        url: '#' // This will trigger a modal for phone number exchange
       },
       {
         name: 'Continue on BITSPARK',
         icon: '✨',
         description: 'Upgrade to premium for unlimited messages',
         action: 'premium',
-        premium: true
+        premium: true,
+        url: '/premium' // Replace with actual premium upgrade page
       }
     ]
   }

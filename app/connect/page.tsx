@@ -6,6 +6,7 @@ import { GlassCard } from '@/components/ui/glass-card'
 import { GradientButton } from '@/components/ui/gradient-button'
 import { MatchCard } from '@/components/ui/match-card'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { ReportModal } from '@/components/ui/report-modal'
 import { Users, Settings, Filter, RefreshCw } from 'lucide-react'
 import { useAuthStore } from '@/lib/store'
 import { MatchingAlgorithm, MatchResult } from '@/lib/matching-algorithm'
@@ -20,6 +21,7 @@ export default function ConnectPage() {
   const [loading, setLoading] = useState(true)
   const [similarity, setSimilarity] = useState<1 | -1>(1)
   const [connecting, setConnecting] = useState(false)
+  const [showReportModal, setShowReportModal] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -211,6 +213,17 @@ export default function ConnectPage() {
           </motion.div>
         )}
       </div>
+      
+      {/* Report Modal */}
+      {currentMatch && (
+        <ReportModal
+          isOpen={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          reportedUserId={currentMatch.user.id}
+          reportedUserName={currentMatch.user.display_name}
+          reporterId={user?.id || ''}
+        />
+      )}
     </div>
   )
 }

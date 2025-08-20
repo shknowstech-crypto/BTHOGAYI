@@ -1,13 +1,17 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { GlassCard } from '@/components/ui/glass-card'
 import { GradientButton } from '@/components/ui/gradient-button'
-import { Heart, Users, Ship, MessageCircle, Dice6, Settings } from 'lucide-react'
+import { NotificationCenter } from '@/components/ui/notification-center'
+import { Heart, Users, Ship, MessageCircle, Dice6, Settings, Bell } from 'lucide-react'
 import { useAuthStore } from '@/lib/store'
 import { useRouter } from 'next/navigation'
 import { AuthService } from '@/lib/auth'
+import { ConnectionService } from '@/lib/connections'
+import { NotificationService } from '@/lib/notifications'
 
 const features = [
   {
@@ -58,6 +62,13 @@ export default function DashboardPage() {
   const { user, isAuthenticated, setUser } = useAuthStore()
   const router = useRouter()
   const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState({
+    connections: 0,
+    messages: 0,
+    ships: 0
+  })
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -67,6 +78,8 @@ export default function DashboardPage() {
           const profile = await AuthService.getUserProfile(currentUser.id)
           if (profile) {
             setUser(profile)
+            loadStats(profile.id)
+            loadUnreadCount(profile.id)
           }
         } else {
           router.push('/auth')
@@ -83,8 +96,34 @@ export default function DashboardPage() {
       checkAuth()
     } else {
       setLoading(false)
+      if (user) {
+        loadStats(user.id)
+        loadUnreadCount(user.id)
+      }
     }
   }, [isAuthenticated, setUser, router])
+
+  const loadStats = async (userId: string) => {
+    try {
+      const connectionStats = await ConnectionService.getConnectionStats(userId)
+      setStats({
+        connections: connectionStats.accepted,
+        messages: 0, // TODO: Implement message count
+        ships: 0 // TODO: Implement ship count
+      })
+    } catch (error) {
+      console.error('Error loading stats:', error)
+    }
+  }
+
+  const loadUnreadCount = async (userId: string) => {
+    try {
+      const count = await NotificationService.getUnreadCount(userId)
+      setUnreadCount(count)
+    } catch (error) {
+      console.error('Error loading unread count:', error)
+    }
+  }
 
   const handleLogout = async () => {
     try {
@@ -124,12 +163,25 @@ export default function DashboardPage() {
               Ready to make some connections at BITS {user?.campus}?
             </p>
           </div>
-          <GradientButton
-            variant="secondary"
-            onClick={handleLogout}
-          >
-            Logout
-          </GradientButton>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowNotifications(true)}
+              className="relative p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-colors"
+            >
+              <Bell className="w-6 h-6 text-white" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+            <GradientButton
+              variant="secondary"
+              onClick={handleLogout}
+            >
+              Logout
+            </GradientButton>
+          </div>
         </motion.div>
 
         {/* Quick Stats */}
@@ -140,15 +192,15 @@ export default function DashboardPage() {
           className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
         >
           <GlassCard className="p-6 text-center">
-            <div className="text-3xl font-bold text-blue-400 mb-2">0</div>
+            <div className="text-3xl font-bold text-blue-400 mb-2">{stats.connections}</div>
             <p className="text-white/70">Connections</p>
           </GlassCard>
           <GlassCard className="p-6 text-center">
-            <div className="text-3xl font-bold text-pink-400 mb-2">0</div>
+            <div className="text-3xl font-bold text-pink-400 mb-2">{stats.messages}</div>
             <p className="text-white/70">Messages</p>
           </GlassCard>
           <GlassCard className="p-6 text-center">
-            <div className="text-3xl font-bold text-purple-400 mb-2">0</div>
+            <div className="text-3xl font-bold text-purple-400 mb-2">{stats.ships}</div>
             <p className="text-white/70">Ships Received</p>
           </GlassCard>
         </motion.div>
@@ -193,6 +245,12 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
+      
+      {/* Notification Center */}
+      <NotificationCenter
+        isOpen={showNotifications}
+        onClose={() => setShowNotifications(false)}
+      />
     </div>
   )
 }

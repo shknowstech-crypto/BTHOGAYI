@@ -4,7 +4,6 @@ import { UserProfile } from './supabase'
 export class AuthService {
   // BITS email validation
   static validateBitsEmail(email: string): boolean {
-    // Enhanced BITS email validation with all campus domains
     const bitsEmailRegex = /^[a-zA-Z0-9._%+-]+@(pilani\.bits-pilani\.ac\.in|goa\.bits-pilani\.ac\.in|hyderabad\.bits-pilani\.ac\.in|dubai\.bits-pilani\.ac\.in)$/
     return bitsEmailRegex.test(email)
   }

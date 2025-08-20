@@ -9,6 +9,8 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Heart, Settings, Calendar, Sparkles } from 'lucide-react'
 import { useAuthStore } from '@/lib/store'
 import { MatchingAlgorithm, MatchResult } from '@/lib/matching-algorithm'
+import { BottomNav } from '@/components/navigation/bottom-nav'
+import { ConnectionAnimation } from '@/components/ui/connection-animation'
 import { ConnectionService } from '@/lib/connections'
 import { useRouter } from 'next/navigation'
 
@@ -20,6 +22,8 @@ export default function DatingPage() {
   const [loading, setLoading] = useState(true)
   const [similarity, setSimilarity] = useState<1 | -1>(1)
   const [eventType, setEventType] = useState<'date' | 'prom' | 'festival'>('date')
+  const [showConnectionAnimation, setShowConnectionAnimation] = useState(false)
+  const [connectedUserName, setConnectedUserName] = useState('')
 
   useEffect(() => {
     if (user) {
@@ -58,7 +62,13 @@ export default function DatingPage() {
         currentMatch.compatibilityScore
       )
       
-      nextMatch()
+      // Show connection animation
+      setConnectedUserName(currentMatch.user.display_name)
+      setShowConnectionAnimation(true)
+      
+      setTimeout(() => {
+        nextMatch()
+      }, 3000)
     } catch (error) {
       console.error('Error creating connection:', error)
     }
@@ -234,6 +244,17 @@ export default function DatingPage() {
           </motion.div>
         )}
       </div>
+      
+      {/* Connection Animation */}
+      <ConnectionAnimation
+        isVisible={showConnectionAnimation}
+        user1Name={user?.display_name || ''}
+        user2Name={connectedUserName}
+        onComplete={() => setShowConnectionAnimation(false)}
+      />
+      
+      {/* Bottom Navigation */}
+      <BottomNav />
     </div>
   )
 }

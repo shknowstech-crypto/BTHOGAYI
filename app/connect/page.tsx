@@ -10,6 +10,8 @@ import { ReportModal } from '@/components/ui/report-modal'
 import { Users, Settings, Filter, RefreshCw } from 'lucide-react'
 import { useAuthStore } from '@/lib/store'
 import { MatchingAlgorithm, MatchResult } from '@/lib/matching-algorithm'
+import { BottomNav } from '@/components/navigation/bottom-nav'
+import { ConnectionAnimation } from '@/components/ui/connection-animation'
 import { ConnectionService } from '@/lib/connections'
 import { useRouter } from 'next/navigation'
 
@@ -22,6 +24,8 @@ export default function ConnectPage() {
   const [similarity, setSimilarity] = useState<1 | -1>(1)
   const [connecting, setConnecting] = useState(false)
   const [showReportModal, setShowReportModal] = useState(false)
+  const [showConnectionAnimation, setShowConnectionAnimation] = useState(false)
+  const [connectedUserName, setConnectedUserName] = useState('')
 
   useEffect(() => {
     if (user) {
@@ -61,8 +65,14 @@ export default function ConnectPage() {
         currentMatch.compatibilityScore
       )
       
+      // Show connection animation
+      setConnectedUserName(currentMatch.user.display_name)
+      setShowConnectionAnimation(true)
+      
       // Move to next match
-      nextMatch()
+      setTimeout(() => {
+        nextMatch()
+      }, 3000)
     } catch (error) {
       console.error('Error creating connection:', error)
     } finally {
@@ -213,6 +223,17 @@ export default function ConnectPage() {
           </motion.div>
         )}
       </div>
+      
+      {/* Connection Animation */}
+      <ConnectionAnimation
+        isVisible={showConnectionAnimation}
+        user1Name={user?.display_name || ''}
+        user2Name={connectedUserName}
+        onComplete={() => setShowConnectionAnimation(false)}
+      />
+      
+      {/* Bottom Navigation */}
+      <BottomNav />
       
       {/* Report Modal */}
       {currentMatch && (

@@ -8,6 +8,8 @@ import { NotificationCenter } from '@/components/ui/notification-center'
 import { Heart, Users, Ship, MessageCircle, Dice6, Settings, Bell } from 'lucide-react'
 import { useAuthStore } from '@/lib/store'
 import { useRouter } from 'next/navigation'
+import { BottomNav } from '@/components/navigation/bottom-nav'
+import { ProfileCompletion } from '@/components/ui/profile-completion'
 import { AuthService } from '@/lib/auth'
 import { ConnectionService } from '@/lib/connections'
 import { NotificationService } from '@/lib/notifications'
@@ -68,6 +70,11 @@ export default function DashboardPage() {
   })
   const [showNotifications, setShowNotifications] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [profileCompletion, setProfileCompletion] = useState({
+    isComplete: false,
+    missingFields: [] as string[],
+    completionPercentage: 0
+  })
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -79,6 +86,7 @@ export default function DashboardPage() {
             setUser(profile)
             loadStats(profile.id)
             loadUnreadCount(profile.id)
+            checkProfileCompletion(profile.id)
           }
         } else {
           router.push('/auth')
@@ -98,6 +106,7 @@ export default function DashboardPage() {
       if (user) {
         loadStats(user.id)
         loadUnreadCount(user.id)
+        checkProfileCompletion(user.id)
       }
     }
   }, [isAuthenticated, setUser, router])
@@ -121,6 +130,15 @@ export default function DashboardPage() {
       setUnreadCount(count)
     } catch (error) {
       console.error('Error loading unread count:', error)
+    }
+  }
+
+  const checkProfileCompletion = async (userId: string) => {
+    try {
+      const completion = await AuthService.checkProfileCompleteness(userId)
+      setProfileCompletion(completion)
+    } catch (error) {
+      console.error('Error checking profile completion:', error)
     }
   }
 
@@ -183,6 +201,13 @@ export default function DashboardPage() {
           </div>
         </motion.div>
 
+        {/* Profile Completion */}
+        <ProfileCompletion
+          completionPercentage={profileCompletion.completionPercentage}
+          missingFields={profileCompletion.missingFields}
+          isComplete={profileCompletion.isComplete}
+        />
+
         {/* Quick Stats */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -244,6 +269,9 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
+      
+      {/* Bottom Navigation */}
+      <BottomNav />
       
       {/* Notification Center */}
       <NotificationCenter

@@ -1,74 +1,31 @@
 'use client'
 
-import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
+import { cn } from '@/lib/utils'
 import { ReactNode } from 'react'
 
 interface GlassCardProps {
   children: ReactNode
   className?: string
   hover?: boolean
-  blur?: 'sm' | 'md' | 'lg' | 'xl'
-  border?: boolean
-  shadow?: 'sm' | 'md' | 'lg'
-  gradient?: boolean
+  onClick?: () => void
 }
 
-export function GlassCard({ 
-  children, 
-  className, 
-  hover = true, 
-  blur = 'md',
-  border = true,
-  shadow = 'lg',
-  gradient = false
-}: GlassCardProps) {
-  const blurMap = {
-    sm: 'backdrop-blur-sm',
-    md: 'backdrop-blur-md',
-    lg: 'backdrop-blur-lg',
-    xl: 'backdrop-blur-xl'
-  }
-
-  const shadowMap = {
-    sm: 'shadow-lg',
-    md: 'shadow-xl',
-    lg: 'shadow-2xl'
-  }
+export function GlassCard({ children, className, hover = false, onClick }: GlassCardProps) {
+  const Component = onClick ? motion.div : motion.div
 
   return (
-    <motion.div
+    <Component
       className={cn(
-        // Base glass effect
-        'bg-white/10 backdrop-blur-md',
-        blurMap[blur],
-        
-        // Border
-        border && 'border border-white/20',
-        
-        // Shadow
-        shadowMap[shadow],
-        
-        // Rounded corners
-        'rounded-3xl',
-        
-        // Gradient overlay
-        gradient && 'bg-gradient-to-br from-white/15 to-white/5',
-        
+        'backdrop-blur-md bg-white/10 border border-white/20 rounded-2xl shadow-xl',
+        hover && 'hover:bg-white/15 transition-all duration-300 cursor-pointer',
         className
       )}
-      whileHover={hover ? { 
-        scale: 1.02, 
-        y: -4,
-        boxShadow: '0 25px 50px rgba(31, 38, 135, 0.4)'
-      } : undefined}
-      transition={{ 
-        type: "spring", 
-        stiffness: 300, 
-        damping: 20 
-      }}
+      onClick={onClick}
+      whileHover={hover ? { scale: 1.02, y: -5 } : undefined}
+      transition={{ duration: 0.2 }}
     >
       {children}
-    </motion.div>
+    </Component>
   )
 }

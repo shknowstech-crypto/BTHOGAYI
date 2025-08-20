@@ -24,6 +24,7 @@ export interface ShipStats {
     responseRate: number
   }
 }
+
 export class ShippingService {
   // Enhanced ship creation with validation
   static async createShip(
@@ -63,6 +64,27 @@ export class ShippingService {
         throw new Error('Users not found')
       }
 
+      // Check if users are active
+      if (!user1.is_active || !user2.is_active) {
+        throw new Error('One or both users are not active')
+      }
+      
+      // Prevent shipping the shipper themselves
+      if (user1.id === shipperId || user2.id === shipperId) {
+        throw new Error('Cannot ship yourself')
+      }
+
+      // Check if users are already connected
+      const { data: existingConnection } = await supabase
+        .from('connections')
+        .select('status')
+        .or(`and(user1_id.eq.${user1.id},user2_id.eq.${user2.id}),and(user1_id.eq.${user2.id},user2_id.eq.${user1.id})`)
+        .single()
+        
+      if (existingConnection && existingConnection.status === 'accepted') {
+        throw new Error('These users are already connected!')
+      }
+
       // Check if ship already exists
       const existingShip = await this.getExistingShip(shipperId, user1.id, user2.id)
       if (existingShip) {
@@ -78,7 +100,8 @@ export class ShippingService {
           user2_id: user2.id,
           message,
           is_anonymous: isAnonymous,
-          status: 'pending'
+          status: 'pending',
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
         })
         .select()
         .single()
@@ -86,7 +109,7 @@ export class ShippingService {
       if (error) throw error
 
       // Create notifications for both users
-      await this.createShipNotifications(user1.id, user2.id, shipperId, isAnonymous)
+      await this.createShipNotifications(user1.id, user2.id, shipperId, isAnonymous, message)
 
       return true
     } catch (error) {
@@ -139,7 +162,7 @@ export class ShippingService {
 
       return (data || []).map(ship => ({
         ...ship,
-        otherUser: ship.user1 // For sent ships, we don't need otherUser logic
+        otherUser: ship.user1 // For display purposes
       }))
     } catch (error) {
       console.error('Error getting sent ships:', error)
@@ -263,7 +286,7 @@ export class ShippingService {
       return []
     }
   }
-  // Private helper methods
+
   // Expire old ships
   static async expireOldShips(): Promise<number> {
     try {
@@ -273,7 +296,7 @@ export class ShippingService {
         .eq('status', 'pending')
         .lt('expires_at', new Date().toISOString())
         .select('id')
-  private static async getExistingShip(shipperId: string, user1Id: string, user2Id: string) {
+
       if (error) throw error
       return data?.length || 0
     } catch (error) {
@@ -281,16 +304,19 @@ export class ShippingService {
       return 0
     }
   }
+
+  // Private helper methods
+  private static async getExistingShip(shipperId: string, user1Id: string, user2Id: string) {
     try {
       const { data } = await supabase
         .from('ships')
         .select('id')
         .eq('shipper_id', shipperId)
         .or(`and(user1_id.eq.${user1Id},user2_id.eq.${user2Id}),and(user1_id.eq.${user2Id},user2_id.eq.${user1Id})`)
+        .neq('status', 'expired')
         .single()
 
       return data
-        .neq('status', 'expired')
     } catch (error) {
       return null
     }
@@ -300,78 +326,69 @@ export class ShippingService {
     user1Id: string,
     user2Id: string,
     shipperId: string,
-    isAnonymous: boolean
-  ) {
-    try {
     isAnonymous: boolean,
     message: string
+  ) {
+    try {
+      const { data: shipper } = await supabase
         .from('users')
         .select('display_name')
         .eq('id', shipperId)
         .single()
 
       const shipperName = isAnonymous ? 'Someone' : shipper?.display_name || 'Someone'
+      const messagePreview = message ? ` with message: "${message.substring(0, 50)}..."` : ''
 
       // Notify both users
       await Promise.all([
-      const messagePreview = message ? ` with message: "${message.substring(0, 50)}..."` : ''
         supabase
           .from('notifications')
           .insert({
             user_id: user1Id,
             type: 'ship',
             title: 'You\'ve been shipped!',
-            message: `${shipperName} thinks you'd be perfect with someone`,
+            message: `${shipperName} thinks you'd be perfect with someone${messagePreview}`,
             data: {
               shipper_id: shipperId,
-            message: `${shipperName} thinks you'd be perfect with someone${messagePreview}`,
-            }
-          }),
               is_anonymous: isAnonymous,
               message: message
+            }
+          }),
+        supabase
           .from('notifications')
           .insert({
             user_id: user2Id,
             type: 'ship',
             title: 'You\'ve been shipped!',
-            message: `${shipperName} thinks you'd be perfect with someone`,
+            message: `${shipperName} thinks you'd be perfect with someone${messagePreview}`,
             data: {
               shipper_id: shipperId,
-            message: `${shipperName} thinks you'd be perfect with someone${messagePreview}`,
-            }
-          })
               is_anonymous: isAnonymous,
               message: message
+            }
+          })
+      ])
     } catch (error) {
       console.error('Error creating ship notifications:', error)
     }
   }
 
-  private static async createConnectionFromShip(ship: Ship) {
+  private static async createConnectionFromShip(ship: Ship): Promise<boolean> {
     try {
       // Import ConnectionService to avoid circular dependency
-  private static async createConnectionFromShip(ship: Ship): Promise<boolean> {
+      const { ConnectionService } = await import('./connections')
       
-      // Check if users are active
-      if (!user1.is_active || !user2.is_active) {
-        throw new Error('One or both users are not active')
       const connection = await ConnectionService.createConnection(
-      
-      // Prevent shipping the shipper themselves
-      if (user1.id === shipperId || user2.id === shipperId) {
-        0.85 // High compatibility score for accepted ships
-      }
-      
-      return !!connection
-      await ConnectionService.createConnection(
         ship.user1_id,
-      return false
         ship.user2_id,
         'friend', // Ships create friend connections by default
-        0.8 // High compatibility score for accepted ships
+        0.85 // High compatibility score for accepted ships
       )
+      
+      return !!connection
     } catch (error) {
       console.error('Error creating connection from ship:', error)
+      return false
     }
   }
 
@@ -389,16 +406,6 @@ export class ShippingService {
         .select('display_name')
         .in('id', [user1Id, user2Id])
 
-      // Check if users are already connected
-          title: `Ship ${actionText}! ${emoji}`,
-          message: `${userNames} ${actionText} your ship${action === 'accept' ? ' and are now connected!' : '.'}`,
-        .select('status')
-        .or(`and(user1_id.eq.${user1.id},user2_id.eq.${user2.id}),and(user1_id.eq.${user2.id},user2_id.eq.${user1.id})`)
-        .single()
-        
-      if (existingConnection && existingConnection.status === 'accepted') {
-        throw new Error('These users are already connected!')
-      }
       const userNames = users?.map(u => u.display_name).join(' and ') || 'Your ship'
 
       await supabase
@@ -406,19 +413,16 @@ export class ShippingService {
         .insert({
           user_id: shipperId,
           type: 'ship',
-        .neq('status', 'expired')
-          title: `Ship ${action}ed!`,
-          message: `${userNames} ${action}ed your ship`,
+          title: `Ship ${actionText}! ${emoji}`,
+          message: `${userNames} ${actionText} your ship${action === 'accept' ? ' and are now connected!' : '.'}`,
           data: {
             action,
             user1_id: user1Id,
             user2_id: user2Id
-      await this.createShipNotifications(user1.id, user2.id, shipperId, isAnonymous, message)
-          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
+          }
         })
     } catch (error) {
       console.error('Error creating response notification:', error)
     }
   }
 }
-        otherUser: ship.user1 // For display purposes

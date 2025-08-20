@@ -5,9 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { GlassCard } from './glass-card'
 import { GradientButton } from './gradient-button'
 import { X, Bell, Heart, Users, Ship, MessageCircle, Dice6 } from 'lucide-react'
-import { useAuthStore } from '@/lib/store'
 import { NotificationService } from '@/lib/notifications'
 import { Notification } from '@/lib/supabase'
+import { useAuthStore } from '@/lib/store'
 
 interface NotificationCenterProps {
   isOpen: boolean
@@ -56,7 +56,6 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
 
   const markAllAsRead = async () => {
     if (!user) return
-    
     await NotificationService.markAllAsRead(user.id)
     setNotifications(prev => prev.map(n => ({ ...n, read: true })))
   }
@@ -86,29 +85,30 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
                 <Bell className="w-6 h-6 text-purple-400" />
                 <h2 className="text-xl font-bold text-white">Notifications</h2>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex gap-2">
                 {notifications.some(n => !n.read) && (
-                  <button
+                  <GradientButton
+                    size="sm"
+                    variant="secondary"
                     onClick={markAllAsRead}
-                    className="text-purple-400 hover:text-purple-300 text-sm"
                   >
                     Mark all read
-                  </button>
+                  </GradientButton>
                 )}
                 <button
                   onClick={onClose}
-                  className="text-white/70 hover:text-white"
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
                 >
-                  <X className="w-6 h-6" />
+                  <X className="w-5 h-5 text-white" />
                 </button>
               </div>
             </div>
 
             {/* Notifications List */}
-            <div className="space-y-3 max-h-96 overflow-y-auto">
+            <div className="max-h-96 overflow-y-auto space-y-3">
               {loading ? (
                 <div className="text-center py-8">
-                  <div className="animate-spin w-6 h-6 border-2 border-white/20 border-t-white rounded-full mx-auto mb-4" />
+                  <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-4" />
                   <p className="text-white/70">Loading notifications...</p>
                 </div>
               ) : notifications.length === 0 ? (
@@ -119,13 +119,12 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
               ) : (
                 notifications.map((notification) => {
                   const Icon = notificationIcons[notification.type] || Bell
-                  
                   return (
                     <motion.div
                       key={notification.id}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
-                      className={`p-4 rounded-xl border cursor-pointer transition-colors ${
+                      className={`p-4 rounded-xl border cursor-pointer transition-all ${
                         notification.read
                           ? 'bg-white/5 border-white/10'
                           : 'bg-purple-500/20 border-purple-400/30'
@@ -133,24 +132,22 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
                       onClick={() => markAsRead(notification.id)}
                     >
                       <div className="flex items-start gap-3">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        <div className={`p-2 rounded-lg ${
                           notification.read ? 'bg-white/10' : 'bg-purple-500/30'
                         }`}>
-                          <Icon className="w-5 h-5 text-white" />
+                          <Icon className="w-4 h-4 text-white" />
                         </div>
-                        
                         <div className="flex-1 min-w-0">
                           <h4 className="font-semibold text-white text-sm">
                             {notification.title}
                           </h4>
-                          <p className="text-white/70 text-sm mt-1">
+                          <p className="text-white/70 text-xs mt-1">
                             {notification.message}
                           </p>
                           <p className="text-white/50 text-xs mt-2">
                             {new Date(notification.created_at).toLocaleDateString()}
                           </p>
                         </div>
-                        
                         {!notification.read && (
                           <div className="w-2 h-2 bg-purple-400 rounded-full" />
                         )}

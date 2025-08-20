@@ -41,7 +41,8 @@ export interface UserProfile {
     age_range: [number, number]
     max_distance?: number
   }
-  interests: string[]
+  gender?: 'male' | 'female' | 'other'
+  age?: number
   email_verified: boolean
   student_id_verified: boolean
   photo_verified: boolean

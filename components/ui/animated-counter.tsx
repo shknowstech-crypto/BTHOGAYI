@@ -5,11 +5,17 @@ import { useEffect } from 'react'
 
 interface AnimatedCounterProps {
   value: number
-  suffix?: string
   duration?: number
+  suffix?: string
+  prefix?: string
 }
 
-export function AnimatedCounter({ value, suffix = '', duration = 2 }: AnimatedCounterProps) {
+export function AnimatedCounter({ 
+  value, 
+  duration = 2, 
+  suffix = '', 
+  prefix = '' 
+}: AnimatedCounterProps) {
   const count = useMotionValue(0)
   const rounded = useTransform(count, (latest) => Math.round(latest))
 
@@ -19,9 +25,10 @@ export function AnimatedCounter({ value, suffix = '', duration = 2 }: AnimatedCo
   }, [count, value, duration])
 
   return (
-    <motion.span>
-      {rounded}
+    <span>
+      {prefix}
+      <motion.span>{rounded}</motion.span>
       {suffix}
-    </motion.span>
+    </span>
   )
 }

@@ -15,15 +15,22 @@ export function GlassCard({ children, className, hover = false, onClick }: Glass
   return (
     <motion.div
       className={cn(
-        'backdrop-blur-md bg-white/10 border border-white/20 rounded-2xl shadow-xl',
-        hover && 'hover:bg-white/15 transition-colors cursor-pointer',
+        "backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl shadow-2xl",
+        "relative overflow-hidden",
+        hover && "cursor-pointer transition-all duration-300 hover:bg-white/15 hover:border-white/30",
         className
       )}
       onClick={onClick}
-      whileHover={hover ? { scale: 1.02 } : undefined}
-      transition={{ duration: 0.2 }}
+      whileHover={hover ? { scale: 1.02, y: -5 } : undefined}
+      transition={{ duration: 0.3 }}
     >
-      {children}
+      {/* Glass effect overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent pointer-events-none" />
+      
+      {/* Content */}
+      <div className="relative z-10">
+        {children}
+      </div>
     </motion.div>
   )
 }

@@ -3,8 +3,8 @@
 import { motion } from 'framer-motion'
 import { GlassCard } from './glass-card'
 import { GradientButton } from './gradient-button'
+import { Heart, X, MapPin, GraduationCap, Star, Users } from 'lucide-react'
 import { UserProfile } from '@/lib/supabase'
-import { Heart, X, MapPin, GraduationCap, Users } from 'lucide-react'
 
 interface MatchCardProps {
   user: UserProfile
@@ -25,15 +25,15 @@ export function MatchCard({
 }: MatchCardProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9, rotateY: -10 }}
+      initial={{ opacity: 0, scale: 0.8, rotateY: -15 }}
       animate={{ opacity: 1, scale: 1, rotateY: 0 }}
-      exit={{ opacity: 0, scale: 0.9, rotateY: 10 }}
-      transition={{ duration: 0.6 }}
+      exit={{ opacity: 0, scale: 0.8, x: 300 }}
+      transition={{ duration: 0.6, type: "spring" }}
       className={className}
     >
       <GlassCard className="max-w-sm mx-auto overflow-hidden">
         {/* Profile Image */}
-        <div className="relative h-80 bg-gradient-to-br from-purple-500 to-pink-500">
+        <div className="relative h-80 overflow-hidden">
           {user.profile_photo ? (
             <img
               src={user.profile_photo}
@@ -41,19 +41,36 @@ export function MatchCard({
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center">
+            <div className="w-full h-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
               <span className="text-6xl font-bold text-white">
                 {user.display_name.charAt(0)}
               </span>
             </div>
           )}
           
-          {/* Compatibility Score */}
-          <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md rounded-full px-3 py-1">
-            <span className="text-white font-semibold">
-              {Math.round(compatibilityScore * 100)}% match
+          {/* Compatibility Score Badge */}
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.3 }}
+            className="absolute top-4 right-4 bg-gradient-to-r from-green-400 to-blue-500 rounded-full px-3 py-1"
+          >
+            <span className="text-white font-bold text-sm">
+              {Math.round(compatibilityScore * 100)}% Match
             </span>
-          </div>
+          </motion.div>
+
+          {/* Verification Badge */}
+          {user.verified && (
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.4 }}
+              className="absolute top-4 left-4 bg-blue-500 rounded-full p-2"
+            >
+              <Star className="w-4 h-4 text-white fill-current" />
+            </motion.div>
+          )}
         </div>
 
         {/* Profile Info */}
@@ -80,10 +97,10 @@ export function MatchCard({
           )}
 
           {/* Interests */}
-          {user.interests.length > 0 && (
+          {user.interests && user.interests.length > 0 && (
             <div className="mb-4">
               <div className="flex flex-wrap gap-2">
-                {user.interests.slice(0, 3).map((interest, index) => (
+                {user.interests.slice(0, 4).map((interest, index) => (
                   <span
                     key={index}
                     className="px-2 py-1 bg-white/20 rounded-full text-white/80 text-xs"
@@ -91,9 +108,9 @@ export function MatchCard({
                     {interest}
                   </span>
                 ))}
-                {user.interests.length > 3 && (
+                {user.interests.length > 4 && (
                   <span className="px-2 py-1 bg-white/20 rounded-full text-white/80 text-xs">
-                    +{user.interests.length - 3} more
+                    +{user.interests.length - 4} more
                   </span>
                 )}
               </div>
@@ -104,12 +121,12 @@ export function MatchCard({
           <div className="mb-6">
             <h4 className="text-white font-semibold text-sm mb-2 flex items-center gap-2">
               <Users className="w-4 h-4" />
-              Why you matched
+              Why you match:
             </h4>
             <ul className="space-y-1">
               {matchReasons.slice(0, 3).map((reason, index) => (
-                <li key={index} className="text-white/70 text-sm flex items-start gap-2">
-                  <div className="w-1.5 h-1.5 bg-purple-400 rounded-full mt-2 flex-shrink-0" />
+                <li key={index} className="text-white/70 text-xs flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 bg-purple-400 rounded-full mt-1.5 flex-shrink-0" />
                   {reason}
                 </li>
               ))}
@@ -120,6 +137,7 @@ export function MatchCard({
           <div className="flex gap-4">
             <GradientButton
               variant="secondary"
+              size="lg"
               className="flex-1"
               onClick={onPass}
             >
@@ -128,6 +146,7 @@ export function MatchCard({
             </GradientButton>
             <GradientButton
               variant="romantic"
+              size="lg"
               className="flex-1"
               onClick={onLike}
             >

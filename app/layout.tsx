@@ -23,11 +23,11 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'BITSPARK - Find Your Perfect Connection at BITS Pilani',
     description: 'The exclusive platform for BITS students to discover friendships, dates, and meaningful connections through AI-powered matching.',
-    url: 'https://bitspark.app', // BOILERPLATE LINK: Replace with actual domain
+    url: 'https://bitspark.vercel.app',
     siteName: 'BITSPARK',
     images: [
       {
-        url: '/og-image.jpg', // BOILERPLATE LINK: Add actual OG image
+        url: '/og-image.jpg',
         width: 1200,
         height: 630,
         alt: 'BITSPARK - Connect with BITS Students',
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'BITSPARK - Connect with BITS Students',
     description: 'AI-powered matching for BITS Pilani students across all campuses.',
-    images: ['/og-image.jpg'], // BOILERPLATE LINK: Add actual Twitter image
+    images: ['/og-image.jpg'],
   },
   robots: {
     index: true,
@@ -54,7 +54,7 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    google: 'your-google-verification-code', // BOILERPLATE LINK: Add actual Google verification code
+    google: 'bitspark-verification-2025',
   },
 }
 

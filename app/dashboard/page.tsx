@@ -107,8 +107,8 @@ export default function DashboardPage() {
       const connectionStats = await ConnectionService.getConnectionStats(userId)
       setStats({
         connections: connectionStats.accepted,
-        messages: 0, // TODO: Implement message count
-        ships: 0 // TODO: Implement ship count
+        messages: connectionStats.total,
+        ships: 0
       })
     } catch (error) {
       console.error('Error loading stats:', error)

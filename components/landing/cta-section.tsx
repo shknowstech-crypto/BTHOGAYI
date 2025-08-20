@@ -108,7 +108,6 @@ export function CTASection() {
                 variant="romantic"
                 className="group"
                 onClick={() => {
-                  // BOILERPLATE LINK: Navigate to signup page
                   window.location.href = '/auth'
                 }}
               >

@@ -48,7 +48,7 @@ export function ReportModal({
       )
       
       // Show success message
-      alert('Report submitted successfully. Our team will review it.')
+      alert('Report submitted successfully. Our team will review it shortly.')
       onClose()
       
       // Reset form
@@ -89,9 +89,9 @@ export function ReportModal({
               </div>
               <button
                 onClick={onClose}
-                className="text-white/70 hover:text-white"
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5 text-white" />
               </button>
             </div>
 
@@ -103,7 +103,7 @@ export function ReportModal({
               {/* Report Type */}
               <div>
                 <label className="block text-white/80 text-sm font-medium mb-3">
-                  Reason for reporting
+                  What's the issue?
                 </label>
                 <div className="space-y-2">
                   {reportTypes.map((type) => (
@@ -119,7 +119,7 @@ export function ReportModal({
                         onChange={(e) => setSelectedType(e.target.value)}
                         className="text-purple-500"
                       />
-                      <span className="text-white">{type.label}</span>
+                      <span className="text-white text-sm">{type.label}</span>
                     </label>
                   ))}
                 </div>
@@ -135,7 +135,7 @@ export function ReportModal({
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Provide more context about the issue..."
                   rows={3}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
                 />
               </div>
 
@@ -151,8 +151,8 @@ export function ReportModal({
                 </GradientButton>
                 <GradientButton
                   type="submit"
-                  variant="primary"
-                  className="flex-1 bg-gradient-to-r from-red-500 to-red-600"
+                  variant="warning"
+                  className="flex-1"
                   disabled={!selectedType || submitting}
                 >
                   {submitting ? 'Submitting...' : 'Submit Report'}

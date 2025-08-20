@@ -42,7 +42,7 @@ export default function AuthPage() {
       } else {
         // Validate BITS email format
         if (!AuthService.validateBitsEmail(formData.email)) {
-          setError('Please use your BITS Pilani email address (@pilani.bits-pilani.ac.in)')
+          setError('Please use your BITS email address (e.g., @pilani.bits-pilani.ac.in, @goa.bits-pilani.ac.in)')
           return
         }
         

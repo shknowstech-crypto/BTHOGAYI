@@ -7,10 +7,6 @@ import { TrustSafetySection } from '@/components/landing/trust-safety'
 import { FAQSection } from '@/components/landing/faq-section'
 import { CTASection } from '@/components/landing/cta-section'
 import { Footer } from '@/components/landing/footer'
-import { TrustSafetySection } from '@/components/landing/trust-safety'
-import { FAQSection } from '@/components/landing/faq-section'
-import { CTASection } from '@/components/landing/cta-section'
-import { Footer } from '@/components/landing/footer'
 
 export default function HomePage() {
   return (
@@ -20,10 +16,6 @@ export default function HomePage() {
       <HowItWorksSection />
       <CampusMapSection />
       <TestimonialsSection />
-      <TrustSafetySection />
-      <FAQSection />
-      <CTASection />
-      <Footer />
       <TrustSafetySection />
       <FAQSection />
       <CTASection />

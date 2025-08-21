@@ -1,3 +1,5 @@
+'use client'
+
 import './globals.css'
 import type { Metadata } from 'next'
 import { Inter, Poppins } from 'next/font/google'
@@ -15,7 +17,7 @@ const poppins = Poppins({
   display: 'swap'
 })
 
-export const metadata: Metadata = {
+const metadata: Metadata = {
   title: 'BITSPARK - Connect with BITS Students | AI-Powered Social & Dating App',
   description: 'Join BITSPARK - the exclusive social and dating platform for BITS Pilani students. AI matching, meaningful conversations, and genuine connections across all BITS campuses.',
   keywords: 'BITS dating app, BITS social network, college dating, student connections, AI matching, BITS Pilani, BITS Goa, BITS Hyderabad, BITS Dubai',
@@ -66,7 +68,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${poppins.variable}`}>
       <head>
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💖</text></svg>" />
+        <link rel="icon" href="/favicon.ico" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#8b5cf6" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />

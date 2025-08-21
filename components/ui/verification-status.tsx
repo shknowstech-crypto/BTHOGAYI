@@ -1,80 +1,99 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { CheckCircle, Clock, AlertCircle, Mail, Camera, GraduationCap } from 'lucide-react'
 import { GlassCard } from './glass-card'
 import { GradientButton } from './gradient-button'
+import { CheckCircle, Clock, AlertCircle, Mail, Camera, GraduationCap } from 'lucide-react'
 import { UserProfile } from '@/lib/supabase'
 
 interface VerificationStatusProps {
   user: UserProfile
-  onVerifyEmail?: () => void
-  onVerifyPhoto?: () => void
-  onVerifyStudentId?: () => void
+  onVerifyEmail: () => void
+  onVerifyPhoto: () => void
+  onVerifyStudentId: () => void
 }
 
-export function VerificationStatus({
-  user,
-  onVerifyEmail,
-  onVerifyPhoto,
-  onVerifyStudentId
+export function VerificationStatus({ 
+  user, 
+  onVerifyEmail, 
+  onVerifyPhoto, 
+  onVerifyStudentId 
 }: VerificationStatusProps) {
   const verificationItems = [
     {
-      key: 'email',
-      label: 'BITS Email',
+      id: 'email',
+      title: 'Email Verification',
+      description: 'Verify your BITS email address',
       icon: Mail,
-      verified: user.email_verified,
+      status: user.email_verified,
       action: onVerifyEmail,
-      description: 'Verify your BITS email address'
+      color: 'from-blue-500 to-cyan-500'
     },
     {
-      key: 'photo',
-      label: 'Profile Photo',
+      id: 'photo',
+      title: 'Profile Photo',
+      description: 'Upload and verify your profile photo',
       icon: Camera,
-      verified: user.photo_verified,
+      status: user.photo_verified,
       action: onVerifyPhoto,
-      description: 'Upload and verify your profile photo'
+      color: 'from-purple-500 to-pink-500'
     },
     {
-      key: 'student_id',
-      label: 'Student ID',
+      id: 'student_id',
+      title: 'Student ID',
+      description: 'Verify your student ID card',
       icon: GraduationCap,
-      verified: user.student_id_verified,
+      status: user.student_id_verified,
       action: onVerifyStudentId,
-      description: 'Upload your student ID for verification'
+      color: 'from-green-500 to-emerald-500'
     }
   ]
 
-  const verifiedCount = verificationItems.filter(item => item.verified).length
+  const getStatusIcon = (status: boolean) => {
+    if (status) return CheckCircle
+    return Clock
+  }
+
+  const getStatusColor = (status: boolean) => {
+    if (status) return 'text-green-400'
+    return 'text-yellow-400'
+  }
+
+  const getStatusText = (status: boolean) => {
+    if (status) return 'Verified'
+    return 'Pending'
+  }
+
+  const completedCount = verificationItems.filter(item => item.status).length
   const totalCount = verificationItems.length
-  const completionPercentage = (verifiedCount / totalCount) * 100
+  const completionPercentage = (completedCount / totalCount) * 100
 
   return (
     <GlassCard className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-lg font-bold text-white mb-1">
-            Account Verification
-          </h3>
+          <h3 className="text-xl font-bold text-white mb-2">Account Verification</h3>
           <p className="text-white/70 text-sm">
-            {verifiedCount}/{totalCount} verified • {Math.round(completionPercentage)}% complete
+            Complete verification to unlock all features
           </p>
         </div>
-        
-        {user.verified && (
-          <div className="flex items-center gap-2 px-3 py-1 bg-green-500/20 border border-green-500/30 rounded-full">
-            <CheckCircle className="w-4 h-4 text-green-400" />
-            <span className="text-green-300 text-sm font-medium">Verified</span>
+        <div className="text-right">
+          <div className="text-2xl font-bold text-white">
+            {completedCount}/{totalCount}
           </div>
-        )}
+          <div className="text-white/60 text-sm">Complete</div>
+        </div>
       </div>
 
       {/* Progress Bar */}
       <div className="mb-6">
-        <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-white/80 text-sm">Progress</span>
+          <span className="text-white/80 text-sm">{Math.round(completionPercentage)}%</span>
+        </div>
+        <div className="w-full bg-white/10 rounded-full h-2">
           <motion.div
-            className="h-full bg-gradient-to-r from-green-500 to-emerald-500"
+            className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full"
             initial={{ width: 0 }}
             animate={{ width: `${completionPercentage}%` }}
             transition={{ duration: 1, ease: "easeOut" }}
@@ -84,56 +103,44 @@ export function VerificationStatus({
 
       {/* Verification Items */}
       <div className="space-y-4">
-        {verificationItems.map((item) => {
-          const Icon = item.icon
-          
+        {verificationItems.map((item, index) => {
+          const StatusIcon = getStatusIcon(item.status)
+          const statusColor = getStatusColor(item.status)
+          const statusText = getStatusText(item.status)
+
           return (
             <motion.div
-              key={item.key}
+              key={item.id}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.1 }}
               className="flex items-center justify-between p-4 bg-white/5 rounded-xl"
             >
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                  item.verified 
-                    ? 'bg-green-500/20 text-green-400' 
-                    : 'bg-white/10 text-white/50'
-                }`}>
-                  <Icon className="w-5 h-5" />
+              <div className="flex items-center gap-4">
+                <div className={`w-12 h-12 bg-gradient-to-r ${item.color} rounded-xl flex items-center justify-center`}>
+                  <item.icon className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-white text-sm">
-                    {item.label}
-                  </h4>
-                  <p className="text-white/60 text-xs">
-                    {item.description}
-                  </p>
+                  <h4 className="font-semibold text-white">{item.title}</h4>
+                  <p className="text-white/60 text-sm">{item.description}</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
-                {item.verified ? (
-                  <div className="flex items-center gap-2 text-green-400">
-                    <CheckCircle className="w-5 h-5" />
-                    <span className="text-sm font-medium">Verified</span>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-2 text-yellow-400">
-                      <Clock className="w-4 h-4" />
-                      <span className="text-xs">Pending</span>
-                    </div>
-                    {item.action && (
-                      <GradientButton
-                        size="sm"
-                        variant="secondary"
-                        onClick={item.action}
-                      >
-                        Verify
-                      </GradientButton>
-                    )}
-                  </>
+                <div className="flex items-center gap-2">
+                  <StatusIcon className={`w-5 h-5 ${statusColor}`} />
+                  <span className={`text-sm font-medium ${statusColor}`}>
+                    {statusText}
+                  </span>
+                </div>
+                
+                {!item.status && (
+                  <GradientButton
+                    size="sm"
+                    onClick={item.action}
+                  >
+                    Verify
+                  </GradientButton>
                 )}
               </div>
             </motion.div>
@@ -141,19 +148,26 @@ export function VerificationStatus({
         })}
       </div>
 
-      {!user.verified && (
-        <div className="mt-6 p-4 bg-blue-500/20 border border-blue-500/30 rounded-xl">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-blue-400 mt-0.5" />
-            <div>
-              <h4 className="font-semibold text-blue-300 text-sm mb-1">
-                Complete Verification
-              </h4>
-              <p className="text-blue-200 text-xs">
-                Verified profiles get 3x more matches and access to premium features.
-              </p>
-            </div>
-          </div>
+      {/* Overall Status */}
+      {user.verified ? (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-6 p-4 bg-green-500/20 border border-green-500/30 rounded-xl text-center"
+        >
+          <CheckCircle className="w-8 h-8 text-green-400 mx-auto mb-2" />
+          <h4 className="font-bold text-green-400 mb-1">Fully Verified!</h4>
+          <p className="text-green-300 text-sm">
+            Your account is fully verified and ready to use all features.
+          </p>
+        </motion.div>
+      ) : (
+        <div className="mt-6 p-4 bg-yellow-500/20 border border-yellow-500/30 rounded-xl text-center">
+          <AlertCircle className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
+          <h4 className="font-bold text-yellow-400 mb-1">Verification Pending</h4>
+          <p className="text-yellow-300 text-sm">
+            Complete all verification steps to unlock premium features.
+          </p>
         </div>
       )}
     </GlassCard>

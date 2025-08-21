@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
 interface CompatibilityMeterProps {
-  score: number // 0-1
+  score: number // 0 to 1
   size?: 'sm' | 'md' | 'lg'
   showPercentage?: boolean
   className?: string
@@ -18,46 +18,48 @@ export function CompatibilityMeter({
 }: CompatibilityMeterProps) {
   const percentage = Math.round(score * 100)
   
-  const sizes = {
-    sm: { width: 60, height: 60, strokeWidth: 4, fontSize: 'text-sm' },
-    md: { width: 80, height: 80, strokeWidth: 6, fontSize: 'text-base' },
-    lg: { width: 120, height: 120, strokeWidth: 8, fontSize: 'text-xl' }
+  const sizeClasses = {
+    sm: 'w-12 h-12',
+    md: 'w-16 h-16',
+    lg: 'w-24 h-24'
   }
-  
-  const { width, height, strokeWidth, fontSize } = sizes[size]
-  const radius = (width - strokeWidth) / 2
-  const circumference = radius * 2 * Math.PI
+
+  const textSizes = {
+    sm: 'text-xs',
+    md: 'text-sm',
+    lg: 'text-lg'
+  }
+
+  const strokeWidth = size === 'sm' ? 3 : size === 'md' ? 4 : 6
+  const radius = size === 'sm' ? 18 : size === 'md' ? 24 : 36
+  const circumference = 2 * Math.PI * radius
   const strokeDasharray = circumference
   const strokeDashoffset = circumference - (score * circumference)
 
   const getColor = (score: number) => {
-    if (score >= 0.8) return '#10b981' // green
-    if (score >= 0.6) return '#f59e0b' // yellow
-    if (score >= 0.4) return '#f97316' // orange
-    return '#ef4444' // red
+    if (score >= 0.8) return '#10B981' // Green
+    if (score >= 0.6) return '#F59E0B' // Yellow
+    if (score >= 0.4) return '#F97316' // Orange
+    return '#EF4444' // Red
   }
 
   return (
-    <div className={cn("relative inline-flex items-center justify-center", className)}>
-      <svg
-        width={width}
-        height={height}
-        className="transform -rotate-90"
-      >
+    <div className={cn("relative", sizeClasses[size], className)}>
+      <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
         {/* Background circle */}
         <circle
-          cx={width / 2}
-          cy={height / 2}
+          cx="50"
+          cy="50"
           r={radius}
-          stroke="rgba(255, 255, 255, 0.1)"
+          stroke="rgba(255, 255, 255, 0.2)"
           strokeWidth={strokeWidth}
           fill="transparent"
         />
         
         {/* Progress circle */}
         <motion.circle
-          cx={width / 2}
-          cy={height / 2}
+          cx="50"
+          cy="50"
           r={radius}
           stroke={getColor(score)}
           strokeWidth={strokeWidth}
@@ -70,15 +72,16 @@ export function CompatibilityMeter({
         />
       </svg>
       
+      {/* Percentage text */}
       {showPercentage && (
         <motion.div
-          initial={{ opacity: 0, scale: 0 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.5, duration: 0.5 }}
           className={cn(
             "absolute inset-0 flex items-center justify-center font-bold text-white",
-            fontSize
+            textSizes[size]
           )}
+          initial={{ opacity: 0, scale: 0.5 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.5, duration: 0.5 }}
         >
           {percentage}%
         </motion.div>

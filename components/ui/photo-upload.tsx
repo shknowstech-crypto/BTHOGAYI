@@ -1,41 +1,63 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { GlassCard } from './glass-card'
 import { GradientButton } from './gradient-button'
-import { LoadingSpinner } from './loading-spinner'
 import { Camera, Upload, X, Check } from 'lucide-react'
 
 interface PhotoUploadProps {
   currentPhoto?: string
   onPhotoUpload: (file: File) => Promise<boolean>
-  title?: string
-  description?: string
-  maxSize?: number // in MB
+  title: string
+  description: string
 }
 
-export function PhotoUpload({
-  currentPhoto,
-  onPhotoUpload,
-  title = "Upload Photo",
-  description = "Choose a clear photo of yourself",
-  maxSize = 5
+export function PhotoUpload({ 
+  currentPhoto, 
+  onPhotoUpload, 
+  title, 
+  description 
 }: PhotoUploadProps) {
+  const [dragActive, setDragActive] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [preview, setPreview] = useState<string | null>(null)
-  const [dragOver, setDragOver] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleFileSelect = async (file: File) => {
-    // Validate file
+  const handleDrag = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true)
+    } else if (e.type === "dragleave") {
+      setDragActive(false)
+    }
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragActive(false)
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFile(e.dataTransfer.files[0])
+    }
+  }, [])
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault()
+    if (e.target.files && e.target.files[0]) {
+      handleFile(e.target.files[0])
+    }
+  }
+
+  const handleFile = async (file: File) => {
     if (!file.type.startsWith('image/')) {
-      alert('Please select an image file')
+      alert('Please upload an image file')
       return
     }
 
-    if (file.size > maxSize * 1024 * 1024) {
-      alert(`File size must be less than ${maxSize}MB`)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File size must be less than 10MB')
       return
     }
 
@@ -54,31 +76,16 @@ export function PhotoUpload({
         // Success handled by parent component
       }
     } catch (error) {
-      console.error('Error uploading photo:', error)
-      alert('Error uploading photo. Please try again.')
+      console.error('Upload error:', error)
+      alert('Upload failed. Please try again.')
     } finally {
       setUploading(false)
     }
   }
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    setDragOver(false)
-    
-    const files = Array.from(e.dataTransfer.files)
-    if (files.length > 0) {
-      handleFileSelect(files[0])
-    }
+  const clearPreview = () => {
+    setPreview(null)
   }
-
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    if (files.length > 0) {
-      handleFileSelect(files[0])
-    }
-  }
-
-  const displayPhoto = preview || currentPhoto
 
   return (
     <GlassCard className="p-6">
@@ -87,93 +94,82 @@ export function PhotoUpload({
 
       <div
         className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all ${
-          dragOver 
-            ? 'border-purple-400 bg-purple-500/20' 
+          dragActive 
+            ? 'border-purple-500 bg-purple-500/10' 
             : 'border-white/30 hover:border-white/50'
         }`}
+        onDragEnter={handleDrag}
+        onDragLeave={handleDrag}
+        onDragOver={handleDrag}
         onDrop={handleDrop}
-        onDragOver={(e) => {
-          e.preventDefault()
-          setDragOver(true)
-        }}
-        onDragLeave={() => setDragOver(false)}
       >
-        {uploading ? (
-          <div className="py-8">
-            <LoadingSpinner size="lg" className="mx-auto mb-4" />
-            <p className="text-white/70">Uploading photo...</p>
-          </div>
-        ) : displayPhoto ? (
-          <div className="space-y-4">
-            <div className="relative w-32 h-32 mx-auto">
-              <img
-                src={displayPhoto}
-                alt="Profile preview"
-                className="w-full h-full object-cover rounded-xl"
-              />
+        {preview || currentPhoto ? (
+          <div className="relative">
+            <img
+              src={preview || currentPhoto}
+              alt="Preview"
+              className="w-32 h-32 object-cover rounded-xl mx-auto mb-4"
+            />
+            {preview && (
               <button
-                onClick={() => {
-                  setPreview(null)
-                  if (fileInputRef.current) {
-                    fileInputRef.current.value = ''
-                  }
-                }}
-                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white"
+                onClick={clearPreview}
+                className="absolute top-0 right-0 transform translate-x-1/2 -translate-y-1/2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center"
               >
-                <X className="w-3 h-3" />
+                <X className="w-4 h-4 text-white" />
               </button>
-            </div>
-            
-            {currentPhoto && !preview && (
-              <div className="flex items-center justify-center gap-2 text-green-400">
-                <Check className="w-4 h-4" />
-                <span className="text-sm">Photo uploaded</span>
-              </div>
             )}
           </div>
         ) : (
-          <div className="py-8">
-            <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Camera className="w-8 h-8 text-white/50" />
-            </div>
-            <p className="text-white/70 mb-4">
+          <div className="mb-4">
+            <Camera className="w-16 h-16 text-white/50 mx-auto mb-4" />
+            <p className="text-white/70 mb-2">
               Drag and drop your photo here, or click to browse
             </p>
             <p className="text-white/50 text-sm">
-              Supports JPG, PNG • Max {maxSize}MB
+              Supports JPG, PNG, WebP (max 10MB)
             </p>
           </div>
         )}
 
         <input
-          ref={fileInputRef}
           type="file"
           accept="image/*"
-          onChange={handleFileInput}
+          onChange={handleChange}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           disabled={uploading}
         />
+
+        {uploading && (
+          <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center">
+            <div className="text-center">
+              <div className="animate-spin w-8 h-8 border-2 border-white/20 border-t-white rounded-full mx-auto mb-2" />
+              <p className="text-white text-sm">Uploading...</p>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="mt-4 flex gap-3">
         <GradientButton
+          size="sm"
           variant="secondary"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
           className="flex-1"
+          onClick={() => document.querySelector('input[type="file"]')?.click()}
+          disabled={uploading}
         >
           <Upload className="w-4 h-4" />
           Choose File
         </GradientButton>
         
-        {displayPhoto && (
+        {(preview || currentPhoto) && (
           <GradientButton
-            variant="romantic"
-            disabled={uploading}
+            size="sm"
+            variant="success"
             className="flex-1"
+            disabled={uploading}
           >
             <Check className="w-4 h-4" />
-            Looks Good
+            {currentPhoto ? 'Verified' : 'Ready'}
           </GradientButton>
         )}
       </div>

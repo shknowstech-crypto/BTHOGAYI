@@ -1,14 +1,13 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { MessageCircle, Clock, ExternalLink } from 'lucide-react'
 import { GlassCard } from './glass-card'
-import { GradientButton } from './gradient-button'
+import { MessageCircle, ExternalLink } from 'lucide-react'
 
 interface MessageLimitIndicatorProps {
   currentCount: number
   maxCount: number
-  onPlatformSelect?: (platform: string) => void
+  onPlatformSelect: (platform: string) => void
 }
 
 export function MessageLimitIndicator({ 
@@ -16,80 +15,73 @@ export function MessageLimitIndicator({
   maxCount, 
   onPlatformSelect 
 }: MessageLimitIndicatorProps) {
+  const isLimitReached = currentCount >= maxCount
   const remaining = maxCount - currentCount
-  const percentage = (currentCount / maxCount) * 100
 
   const platforms = [
-    { name: 'Instagram', icon: '📷', color: 'from-pink-500 to-purple-500' },
-    { name: 'WhatsApp', icon: '💬', color: 'from-green-500 to-emerald-500' },
-    { name: 'Discord', icon: '🎮', color: 'from-indigo-500 to-blue-500' },
-    { name: 'Phone', icon: '📱', color: 'from-gray-500 to-slate-500' }
+    { id: 'instagram', name: 'Instagram', icon: '📷', color: 'from-pink-500 to-purple-500' },
+    { id: 'whatsapp', name: 'WhatsApp', icon: '💬', color: 'from-green-500 to-emerald-500' },
+    { id: 'discord', name: 'Discord', icon: '🎮', color: 'from-indigo-500 to-purple-500' },
+    { id: 'phone', name: 'Phone', icon: '📱', color: 'from-blue-500 to-cyan-500' }
   ]
 
-  if (remaining > 0) {
+  if (!isLimitReached) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10"
-      >
-        <div className="flex items-center gap-2">
-          <MessageCircle className="w-4 h-4 text-blue-400" />
-          <span className="text-white/70 text-sm">
-            {remaining} message{remaining !== 1 ? 's' : ''} remaining
-          </span>
+      <GlassCard className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <MessageCircle className="w-5 h-5 text-purple-400" />
+            <span className="text-white font-medium">Messages</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex gap-1">
+              {Array.from({ length: maxCount }).map((_, i) => (
+                <motion.div
+                  key={i}
+                  className={`w-2 h-2 rounded-full ${
+                    i < currentCount ? 'bg-purple-400' : 'bg-white/20'
+                  }`}
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: i * 0.1 }}
+                />
+              ))}
+            </div>
+            <span className="text-white/70 text-sm ml-2">
+              {remaining} left
+            </span>
+          </div>
         </div>
-        
-        {/* Progress Bar */}
-        <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
-          <motion.div
-            className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
-            initial={{ width: 0 }}
-            animate={{ width: `${percentage}%` }}
-            transition={{ duration: 0.5 }}
-          />
-        </div>
-        
-        <span className="text-white/60 text-xs">
-          {currentCount}/{maxCount}
-        </span>
-      </motion.div>
+      </GlassCard>
     )
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="space-y-4"
-    >
-      <GlassCard className="p-6 text-center">
-        <div className="w-16 h-16 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Clock className="w-8 h-8 text-white" />
-        </div>
+    <GlassCard className="p-6">
+      <div className="text-center mb-6">
         <h3 className="text-xl font-bold text-white mb-2">
-          Message Limit Reached!
+          Message Limit Reached! 💬
         </h3>
-        <p className="text-white/70 mb-6">
-          You've used all {maxCount} messages. Choose a platform to continue your conversation:
+        <p className="text-white/70">
+          Continue your conversation on another platform
         </p>
-        
-        <div className="grid grid-cols-2 gap-3">
-          {platforms.map((platform) => (
-            <GradientButton
-              key={platform.name}
-              variant="secondary"
-              size="sm"
-              onClick={() => onPlatformSelect?.(platform.name.toLowerCase())}
-              className="flex items-center gap-2"
-            >
-              <span>{platform.icon}</span>
-              {platform.name}
-              <ExternalLink className="w-3 h-3" />
-            </GradientButton>
-          ))}
-        </div>
-      </GlassCard>
-    </motion.div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        {platforms.map((platform) => (
+          <motion.button
+            key={platform.id}
+            onClick={() => onPlatformSelect(platform.id)}
+            className={`p-4 bg-gradient-to-r ${platform.color} rounded-xl text-white font-medium flex items-center gap-2 justify-center`}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <span className="text-lg">{platform.icon}</span>
+            <span>{platform.name}</span>
+            <ExternalLink className="w-4 h-4" />
+          </motion.button>
+        ))}
+      </div>
+    </GlassCard>
   )
 }

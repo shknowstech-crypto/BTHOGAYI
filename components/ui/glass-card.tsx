@@ -22,8 +22,8 @@ export function GlassCard({ children, className, hover = false, onClick }: Glass
         className
       )}
       onClick={onClick}
-      whileHover={hover ? { scale: 1.02, y: -5 } : undefined}
-      transition={{ duration: 0.3 }}
+      whileHover={hover ? { scale: 1.02 } : undefined}
+      transition={{ duration: 0.2 }}
     >
       {children}
     </Component>

@@ -8,6 +8,9 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { MessageCircle, Send, Clock, ExternalLink, Heart } from 'lucide-react'
 import { useAuthStore } from '@/lib/store'
 import { ConnectionService, ConnectionWithUser } from '@/lib/connections'
+import { BottomNav } from '@/components/navigation/bottom-nav'
+import { MessageLimitIndicator } from '@/components/ui/message-limit-indicator'
+import { TypingIndicator } from '@/components/ui/typing-indicator'
 import { MessagingService, MessageLimitInfo } from '@/lib/messaging'
 import { Message } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
@@ -22,6 +25,8 @@ export default function MessagesPage() {
   const [messageLimit, setMessageLimit] = useState<MessageLimitInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
+  const [isTyping, setIsTyping] = useState(false)
+  const [typingUser, setTypingUser] = useState('')
 
   useEffect(() => {
     if (user) {
@@ -286,41 +291,36 @@ export default function MessagesPage() {
                 </div>
 
                 {/* Message Input or Platform Options */}
-                {messageLimit?.limitReached ? (
-                  <div className="space-y-4">
-                    <div className="text-center p-4 bg-yellow-500/20 rounded-xl border border-yellow-500/30">
-                      <h4 className="font-semibold text-yellow-300 mb-2">
-                        Message Limit Reached!
-                      </h4>
-                      <p className="text-yellow-200 text-sm">
-                        You've used all 5 messages. Choose a platform to continue your conversation:
-                      </p>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-3">
-                      {getPlatformOptions().map((platform) => (
-                        <GradientButton
-                          key={platform.action}
-                          variant={platform.premium ? "romantic" : "secondary"}
-                          size="sm"
-                          className="flex items-center gap-2"
-                          onClick={() => {
-                            if (platform.url === '#') {
-                              // Handle phone number exchange modal
-                              alert('Phone number exchange feature - Replace with actual modal')
-                            } else {
-                              window.open(platform.url, '_blank')
-                            }
-                          }}
-                        >
-                          <span>{platform.icon}</span>
-                          {platform.name}
-                          <ExternalLink className="w-4 h-4" />
-                        </GradientButton>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
+                <div className="space-y-4">
+                  {/* Message Limit Indicator */}
+                  {messageLimit && (
+                    <MessageLimitIndicator
+                      currentCount={messageLimit.currentCount}
+                      maxCount={5}
+                      onPlatformSelect={(platform) => {
+                        if (platform === 'phone') {
+                          alert('Phone number exchange feature - Replace with actual modal')
+                        } else {
+                          const platformUrls: Record<string, string> = {
+                            instagram: 'https://instagram.com/direct/new/',
+                            whatsapp: 'https://wa.me/',
+                            discord: 'https://discord.gg/bitspark'
+                          }
+                          if (platformUrls[platform]) {
+                            window.open(platformUrls[platform], '_blank')
+                          }
+                        }
+                      }}
+                    />
+                  )}
+                  
+                  {/* Typing Indicator */}
+                  {isTyping && (
+                    <TypingIndicator userName={typingUser} />
+                  )}
+                  
+                  {/* Message Input */}
+                  {!messageLimit?.limitReached && (
                   <form onSubmit={handleSendMessage} className="flex gap-3">
                     <input
                       type="text"
@@ -338,7 +338,8 @@ export default function MessagesPage() {
                       {sending ? <LoadingSpinner size="sm" /> : <Send className="w-5 h-5" />}
                     </GradientButton>
                   </form>
-                )}
+                  )}
+                </div>
               </GlassCard>
             ) : (
               <GlassCard className="p-12 text-center h-[600px] flex items-center justify-center">
@@ -354,6 +355,9 @@ export default function MessagesPage() {
           </motion.div>
         </div>
       </div>
+      
+      {/* Bottom Navigation */}
+      <BottomNav />
     </div>
   )
 }

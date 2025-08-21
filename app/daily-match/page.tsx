@@ -9,6 +9,8 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Dice6, Calendar, Flame, Star, RefreshCw } from 'lucide-react'
 import { useAuthStore } from '@/lib/store'
 import { DailyMatchService, DailyMatchWithUser } from '@/lib/daily-matches'
+import { BottomNav } from '@/components/navigation/bottom-nav'
+import { ConnectionAnimation } from '@/components/ui/connection-animation'
 import { ConnectionService } from '@/lib/connections'
 import { useRouter } from 'next/navigation'
 
@@ -19,6 +21,7 @@ export default function DailyMatchPage() {
   const [loading, setLoading] = useState(true)
   const [streak, setStreak] = useState(0)
   const [acting, setActing] = useState(false)
+  const [showConnectionAnimation, setShowConnectionAnimation] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -68,8 +71,14 @@ export default function DailyMatchPage() {
       // Record action
       await DailyMatchService.recordAction(dailyMatch.id, 'connect')
       
+      // Show connection animation
+      setShowConnectionAnimation(true)
+      
       // Load new match for tomorrow
-      await loadDailyMatch()
+      setTimeout(async () => {
+        await loadDailyMatch()
+        setShowConnectionAnimation(false)
+      }, 3000)
     } catch (error) {
       console.error('Error connecting:', error)
     } finally {
@@ -252,6 +261,17 @@ export default function DailyMatchPage() {
           </GlassCard>
         </motion.div>
       </div>
+      
+      {/* Connection Animation */}
+      <ConnectionAnimation
+        isVisible={showConnectionAnimation}
+        user1Name={user?.display_name || ''}
+        user2Name={dailyMatch?.matched_user.display_name || ''}
+        onComplete={() => setShowConnectionAnimation(false)}
+      />
+      
+      {/* Bottom Navigation */}
+      <BottomNav />
     </div>
   )
 }

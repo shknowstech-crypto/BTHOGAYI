@@ -8,6 +8,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Ship, Heart, Users, Send, Eye, EyeOff } from 'lucide-react'
 import { useAuthStore } from '@/lib/store'
 import { ShippingService, ShipWithUsers } from '@/lib/shipping'
+import { BottomNav } from '@/components/navigation/bottom-nav'
 import { useRouter } from 'next/navigation'
 
 export default function ShippingPage() {
@@ -336,6 +337,9 @@ export default function ShippingPage() {
           )}
         </motion.div>
       </div>
+      
+      {/* Bottom Navigation */}
+      <BottomNav />
     </div>
   )
 }

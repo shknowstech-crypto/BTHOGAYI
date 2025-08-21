@@ -102,8 +102,7 @@ export class MessagingService {
       return { 
         success: true, 
         message, 
-        limitReached: message.message_count >= 5,
-        qualityScore
+        limitReached: message.message_count >= 5
       }
     } catch (error) {
       console.error('Error sending message:', error)

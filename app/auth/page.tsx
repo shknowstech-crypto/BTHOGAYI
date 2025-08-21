@@ -42,7 +42,7 @@ export default function AuthPage() {
       } else {
         // Validate BITS email format
         if (!AuthService.validateBitsEmail(formData.email)) {
-          setError('Please use your BITS Pilani email address (@pilani.bits-pilani.ac.in)')
+          setError('Please use your BITS email address (e.g., @pilani.bits-pilani.ac.in, @goa.bits-pilani.ac.in)')
           return
         }
         
@@ -50,11 +50,12 @@ export default function AuthPage() {
           display_name: formData.displayName,
           student_id: formData.studentId,
           campus: formData.campus as any,
-          branch: 'Computer Science', // Default - user can update later
-          year: 1, // Default - user can update later
+          branch: 'Computer Science',
+          year: 1,
           interests: []
         })
-        setError('Account created! Please check your email to verify your account, then sign in.')
+        alert('Account created successfully! You can now sign in.')
+        setIsLogin(true)
       }
     } catch (err: any) {
       setError(err.message || 'An error occurred')

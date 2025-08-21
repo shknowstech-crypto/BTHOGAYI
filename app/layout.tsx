@@ -23,11 +23,11 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'BITSPARK - Find Your Perfect Connection at BITS Pilani',
     description: 'The exclusive platform for BITS students to discover friendships, dates, and meaningful connections through AI-powered matching.',
-    url: 'https://bitspark.app', // BOILERPLATE LINK: Replace with actual domain
+    url: 'https://bitspark.vercel.app',
     siteName: 'BITSPARK',
     images: [
       {
-        url: '/og-image.jpg', // BOILERPLATE LINK: Add actual OG image
+        url: '/og-image.jpg',
         width: 1200,
         height: 630,
         alt: 'BITSPARK - Connect with BITS Students',
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'BITSPARK - Connect with BITS Students',
     description: 'AI-powered matching for BITS Pilani students across all campuses.',
-    images: ['/og-image.jpg'], // BOILERPLATE LINK: Add actual Twitter image
+    images: ['/og-image.jpg'],
   },
   robots: {
     index: true,
@@ -54,7 +54,7 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    google: 'your-google-verification-code', // BOILERPLATE LINK: Add actual Google verification code
+    google: 'bitspark-verification-2025',
   },
 }
 
@@ -66,9 +66,8 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${poppins.variable}`}>
       <head>
-        <link rel="icon" href="/favicon.ico" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" /> {/* BOILERPLATE LINK: Add actual favicon files */}
-        <link rel="manifest" href="/manifest.json" /> {/* BOILERPLATE LINK: Add actual manifest file */}
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💖</text></svg>" />
+        <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#8b5cf6" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
       </head>

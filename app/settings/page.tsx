@@ -8,6 +8,8 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Settings, User, Bell, Shield, Heart, Camera, Save } from 'lucide-react'
 import { useAuthStore } from '@/lib/store'
 import { AuthService } from '@/lib/auth'
+import { InterestSelector } from '@/components/ui/interest-selector'
+import { BottomNav } from '@/components/navigation/bottom-nav'
 import { useRouter } from 'next/navigation'
 
 export default function SettingsPage() {
@@ -208,40 +210,10 @@ export default function SettingsPage() {
                   </div>
 
                   {/* Interests */}
-                  <div>
-                    <label className="block text-white/80 text-sm font-medium mb-2">
-                      Interests
-                    </label>
-                    <div className="flex gap-2 mb-3">
-                      <input
-                        type="text"
-                        value={newInterest}
-                        onChange={(e) => setNewInterest(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && addInterest()}
-                        placeholder="Add an interest..."
-                        className="flex-1 px-4 py-2 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                      <GradientButton onClick={addInterest} size="sm">
-                        Add
-                      </GradientButton>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {formData.interests.map((interest) => (
-                        <span
-                          key={interest}
-                          className="px-3 py-1 bg-purple-500/30 text-white rounded-full text-sm flex items-center gap-2"
-                        >
-                          {interest}
-                          <button
-                            onClick={() => removeInterest(interest)}
-                            className="text-white/70 hover:text-white"
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+                  <InterestSelector
+                    selectedInterests={formData.interests}
+                    onInterestsChange={(interests) => setFormData({ ...formData, interests })}
+                  />
                 </div>
               </GlassCard>
             )}
@@ -426,6 +398,9 @@ export default function SettingsPage() {
           </motion.div>
         </div>
       </div>
+      
+      {/* Bottom Navigation */}
+      <BottomNav />
     </div>
   )
 }

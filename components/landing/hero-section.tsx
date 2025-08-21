@@ -115,7 +115,6 @@ export function HeroSection() {
             size="xl"
             variant="romantic"
             onClick={() => {
-              // BOILERPLATE LINK: Navigate to signup page
               window.location.href = '/auth'
             }}
           >

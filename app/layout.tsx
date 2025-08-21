@@ -1,3 +1,5 @@
+'use client'
+
 import './globals.css'
 import type { Metadata } from 'next'
 import { Inter, Poppins } from 'next/font/google'
@@ -15,7 +17,7 @@ const poppins = Poppins({
   display: 'swap'
 })
 
-export const metadata: Metadata = {
+const metadata: Metadata = {
   title: 'BITSPARK - Connect with BITS Students | AI-Powered Social & Dating App',
   description: 'Join BITSPARK - the exclusive social and dating platform for BITS Pilani students. AI matching, meaningful conversations, and genuine connections across all BITS campuses.',
   keywords: 'BITS dating app, BITS social network, college dating, student connections, AI matching, BITS Pilani, BITS Goa, BITS Hyderabad, BITS Dubai',

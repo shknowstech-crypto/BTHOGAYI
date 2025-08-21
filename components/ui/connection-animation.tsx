@@ -1,8 +1,8 @@
 'use client'
 
-import { motion } from 'framer-motion'
-import { Heart, Sparkles, Star } from 'lucide-react'
-import { GlassCard } from './glass-card'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Heart, Sparkles } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 interface ConnectionAnimationProps {
   isVisible: boolean
@@ -17,97 +17,121 @@ export function ConnectionAnimation({
   user2Name, 
   onComplete 
 }: ConnectionAnimationProps) {
-  if (!isVisible) return null
+  const [stage, setStage] = useState(0)
+
+  useEffect(() => {
+    if (isVisible) {
+      setStage(0)
+      const timer1 = setTimeout(() => setStage(1), 500)
+      const timer2 = setTimeout(() => setStage(2), 1500)
+      const timer3 = setTimeout(() => {
+        setStage(3)
+        onComplete()
+      }, 3000)
+
+      return () => {
+        clearTimeout(timer1)
+        clearTimeout(timer2)
+        clearTimeout(timer3)
+      }
+    }
+  }, [isVisible, onComplete])
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center"
-      onAnimationComplete={() => {
-        setTimeout(onComplete, 3000)
-      }}
-    >
-      <motion.div
-        initial={{ scale: 0, rotate: -180 }}
-        animate={{ scale: 1, rotate: 0 }}
-        transition={{ duration: 0.8, type: "spring" }}
-      >
-        <GlassCard className="p-12 text-center max-w-md">
-          {/* Animated Heart */}
-          <motion.div
-            className="relative mb-8"
-            animate={{
-              scale: [1, 1.2, 1],
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-            }}
-          >
-            <div className="w-24 h-24 bg-gradient-to-r from-pink-500 to-red-500 rounded-full flex items-center justify-center mx-auto">
-              <Heart className="w-12 h-12 text-white fill-current" />
-            </div>
-            
-            {/* Floating particles */}
-            {Array.from({ length: 8 }).map((_, i) => (
+    <AnimatePresence>
+      {isVisible && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center"
+        >
+          <div className="text-center">
+            {/* Hearts Animation */}
+            <div className="relative mb-8">
               <motion.div
-                key={i}
-                className="absolute"
-                style={{
-                  left: '50%',
-                  top: '50%',
-                }}
-                animate={{
-                  x: [0, (Math.cos(i * 45 * Math.PI / 180) * 60)],
-                  y: [0, (Math.sin(i * 45 * Math.PI / 180) * 60)],
-                  opacity: [1, 0],
-                  scale: [0, 1, 0],
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  delay: i * 0.2,
-                }}
+                initial={{ scale: 0 }}
+                animate={{ scale: stage >= 1 ? 1 : 0 }}
+                transition={{ type: "spring", stiffness: 200 }}
+                className="relative"
               >
-                {i % 2 === 0 ? (
-                  <Sparkles className="w-4 h-4 text-yellow-400" />
-                ) : (
-                  <Star className="w-3 h-3 text-pink-400" />
-                )}
+                <Heart className="w-24 h-24 text-pink-500 mx-auto fill-current" />
+                
+                {/* Sparkles around heart */}
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <motion.div
+                    key={i}
+                    className="absolute"
+                    style={{
+                      left: '50%',
+                      top: '50%',
+                      transform: `rotate(${i * 45}deg) translateY(-60px)`
+                    }}
+                    initial={{ opacity: 0, scale: 0 }}
+                    animate={{ 
+                      opacity: stage >= 2 ? [0, 1, 0] : 0,
+                      scale: stage >= 2 ? [0, 1, 0] : 0
+                    }}
+                    transition={{ 
+                      duration: 1,
+                      delay: i * 0.1,
+                      repeat: stage >= 2 ? Infinity : 0,
+                      repeatDelay: 2
+                    }}
+                  >
+                    <Sparkles className="w-4 h-4 text-yellow-400" />
+                  </motion.div>
+                ))}
               </motion.div>
-            ))}
-          </motion.div>
+            </div>
 
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="text-3xl font-bold text-white mb-4"
-          >
-            It's a Match! 🎉
-          </motion.h2>
-          
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7 }}
-            className="text-white/80 mb-6"
-          >
-            You and <span className="font-semibold text-purple-300">{user2Name}</span> are now connected!
-          </motion.p>
+            {/* Text Animation */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: stage >= 1 ? 1 : 0, y: stage >= 1 ? 0 : 20 }}
+              transition={{ delay: 0.5 }}
+            >
+              <h2 className="text-4xl font-bold text-white mb-4">
+                It's a Match! 🎉
+              </h2>
+              <p className="text-xl text-white/80 mb-2">
+                {user1Name} & {user2Name}
+              </p>
+              <p className="text-white/60">
+                You've connected! Start a conversation now.
+              </p>
+            </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.9 }}
-            className="text-white/60 text-sm"
-          >
-            Start your conversation with 5 meaningful messages
-          </motion.div>
-        </GlassCard>
-      </motion.div>
-    </motion.div>
+            {/* Confetti Effect */}
+            {stage >= 2 && (
+              <div className="absolute inset-0 pointer-events-none">
+                {Array.from({ length: 50 }).map((_, i) => (
+                  <motion.div
+                    key={i}
+                    className="absolute w-2 h-2 bg-gradient-to-r from-pink-400 to-purple-400 rounded-full"
+                    style={{
+                      left: `${Math.random() * 100}%`,
+                      top: `${Math.random() * 100}%`,
+                    }}
+                    initial={{ opacity: 0, scale: 0 }}
+                    animate={{
+                      opacity: [0, 1, 0],
+                      scale: [0, 1, 0],
+                      y: [0, -100, -200],
+                      rotate: [0, 180, 360]
+                    }}
+                    transition={{
+                      duration: 2,
+                      delay: Math.random() * 0.5,
+                      ease: "easeOut"
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }

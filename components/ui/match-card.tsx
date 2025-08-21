@@ -1,12 +1,11 @@
 'use client'
 
-import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { GlassCard } from './glass-card'
 import { GradientButton } from './gradient-button'
-import { Heart, X, MapPin, GraduationCap, Star, Flag } from 'lucide-react'
+import { CompatibilityMeter } from './compatibility-meter'
+import { Heart, X, MapPin, GraduationCap, Calendar } from 'lucide-react'
 import { UserProfile } from '@/lib/supabase'
-import { cn } from '@/lib/utils'
 
 interface MatchCardProps {
   user: UserProfile
@@ -17,71 +16,43 @@ interface MatchCardProps {
   className?: string
 }
 
-export function MatchCard({
-  user,
-  compatibilityScore,
-  matchReasons,
-  onLike,
+export function MatchCard({ 
+  user, 
+  compatibilityScore, 
+  matchReasons, 
+  onLike, 
   onPass,
-  className
+  className 
 }: MatchCardProps) {
-  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
-  const [showDetails, setShowDetails] = useState(false)
-
-  const photos = user.profile_photo ? [user.profile_photo] : []
-
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.8, rotateY: -15 }}
+      initial={{ opacity: 0, scale: 0.9, rotateY: -10 }}
       animate={{ opacity: 1, scale: 1, rotateY: 0 }}
-      exit={{ opacity: 0, scale: 0.8, rotateY: 15 }}
+      exit={{ opacity: 0, scale: 0.9, rotateY: 10 }}
       transition={{ duration: 0.6, type: "spring" }}
-      className={cn("w-full max-w-sm mx-auto", className)}
+      className={className}
     >
-      <GlassCard className="overflow-hidden">
-        {/* Photo Section */}
-        <div className="relative h-96 bg-gradient-to-br from-purple-500 to-pink-500">
-          {photos.length > 0 ? (
-            <img
-              src={photos[currentPhotoIndex]}
+      <GlassCard className="max-w-sm mx-auto overflow-hidden">
+        {/* Profile Photo */}
+        <div className="relative h-80 bg-gradient-to-br from-purple-500 to-pink-500">
+          {user.profile_photo ? (
+            <img 
+              src={user.profile_photo} 
               alt={user.display_name}
               className="w-full h-full object-cover"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <div className="w-32 h-32 bg-white/20 rounded-full flex items-center justify-center">
-                <span className="text-6xl font-bold text-white">
-                  {user.display_name.charAt(0)}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Compatibility Score */}
-          <div className="absolute top-4 right-4">
-            <div className="bg-black/50 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1">
-              <Star className="w-4 h-4 text-yellow-400" />
-              <span className="text-white font-semibold">
-                {Math.round(compatibilityScore * 100)}%
+              <span className="text-6xl font-bold text-white">
+                {user.display_name.charAt(0)}
               </span>
             </div>
-          </div>
-
-          {/* Photo Indicators */}
-          {photos.length > 1 && (
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
-              {photos.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentPhotoIndex(index)}
-                  className={cn(
-                    "w-2 h-2 rounded-full transition-all",
-                    index === currentPhotoIndex ? "bg-white" : "bg-white/50"
-                  )}
-                />
-              ))}
-            </div>
           )}
+          
+          {/* Compatibility Badge */}
+          <div className="absolute top-4 right-4">
+            <CompatibilityMeter score={compatibilityScore} size="sm" />
+          </div>
         </div>
 
         {/* Profile Info */}
@@ -91,44 +62,57 @@ export function MatchCard({
               <h3 className="text-2xl font-bold text-white mb-1">
                 {user.display_name}
               </h3>
-              <div className="flex items-center gap-2 text-white/70 text-sm">
-                <GraduationCap className="w-4 h-4" />
-                <span>{user.branch} • Year {user.year}</span>
-              </div>
-              <div className="flex items-center gap-2 text-white/70 text-sm mt-1">
-                <MapPin className="w-4 h-4" />
-                <span>BITS {user.campus}</span>
-              </div>
+              <p className="text-white/70">
+                @{user.username}
+              </p>
             </div>
-            <button
-              onClick={() => setShowDetails(!showDetails)}
-              className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-            >
-              <Flag className="w-5 h-5 text-white" />
-            </button>
+            <div className="text-right">
+              <div className="text-lg font-semibold text-purple-400">
+                {Math.round(compatibilityScore * 100)}%
+              </div>
+              <div className="text-white/60 text-sm">Match</div>
+            </div>
+          </div>
+
+          {/* Details */}
+          <div className="space-y-2 mb-6">
+            <div className="flex items-center gap-2 text-white/70">
+              <GraduationCap className="w-4 h-4" />
+              <span className="text-sm">{user.branch}</span>
+            </div>
+            <div className="flex items-center gap-2 text-white/70">
+              <Calendar className="w-4 h-4" />
+              <span className="text-sm">Year {user.year}</span>
+            </div>
+            <div className="flex items-center gap-2 text-white/70">
+              <MapPin className="w-4 h-4" />
+              <span className="text-sm">BITS {user.campus}</span>
+            </div>
           </div>
 
           {/* Bio */}
           {user.bio && (
-            <p className="text-white/80 mb-4 leading-relaxed">
-              {user.bio}
-            </p>
+            <div className="mb-6">
+              <p className="text-white/80 text-sm leading-relaxed">
+                {user.bio}
+              </p>
+            </div>
           )}
 
           {/* Interests */}
           {user.interests && user.interests.length > 0 && (
-            <div className="mb-4">
+            <div className="mb-6">
               <div className="flex flex-wrap gap-2">
                 {user.interests.slice(0, 4).map((interest, index) => (
-                  <span
+                  <span 
                     key={index}
-                    className="px-3 py-1 bg-purple-500/30 text-white rounded-full text-sm"
+                    className="px-3 py-1 bg-white/10 rounded-full text-white/80 text-xs"
                   >
                     {interest}
                   </span>
                 ))}
                 {user.interests.length > 4 && (
-                  <span className="px-3 py-1 bg-white/10 text-white/70 rounded-full text-sm">
+                  <span className="px-3 py-1 bg-white/10 rounded-full text-white/60 text-xs">
                     +{user.interests.length - 4} more
                   </span>
                 )}
@@ -137,36 +121,36 @@ export function MatchCard({
           )}
 
           {/* Match Reasons */}
-          <div className="mb-6">
-            <h4 className="text-white font-semibold mb-2 text-sm">Why you matched:</h4>
-            <div className="space-y-1">
-              {matchReasons.slice(0, 3).map((reason, index) => (
-                <div key={index} className="flex items-center gap-2 text-white/70 text-sm">
-                  <div className="w-1.5 h-1.5 bg-purple-400 rounded-full" />
-                  <span>{reason}</span>
-                </div>
-              ))}
+          {matchReasons.length > 0 && (
+            <div className="mb-6">
+              <h4 className="text-white font-semibold mb-2 text-sm">Why you match:</h4>
+              <ul className="space-y-1">
+                {matchReasons.slice(0, 3).map((reason, index) => (
+                  <li key={index} className="text-white/70 text-xs flex items-start">
+                    <div className="w-1.5 h-1.5 bg-purple-400 rounded-full mr-2 mt-1.5" />
+                    {reason}
+                  </li>
+                ))}
+              </ul>
             </div>
-          </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex gap-4">
             <GradientButton
               variant="secondary"
-              size="lg"
-              onClick={onPass}
               className="flex-1"
+              onClick={onPass}
             >
-              <X className="w-6 h-6" />
+              <X className="w-5 h-5" />
               Pass
             </GradientButton>
             <GradientButton
               variant="romantic"
-              size="lg"
-              onClick={onLike}
               className="flex-1"
+              onClick={onLike}
             >
-              <Heart className="w-6 h-6" />
+              <Heart className="w-5 h-5" />
               Connect
             </GradientButton>
           </div>

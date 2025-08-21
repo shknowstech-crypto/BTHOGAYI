@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, useMotionValue, useTransform, animate } from 'framer-motion'
+import { useEffect } from 'react'
 
 interface AnimatedCounterProps {
   value: number
@@ -16,40 +16,19 @@ export function AnimatedCounter({
   suffix = '', 
   prefix = '' 
 }: AnimatedCounterProps) {
-  const [count, setCount] = useState(0)
+  const count = useMotionValue(0)
+  const rounded = useTransform(count, (latest) => Math.round(latest))
 
   useEffect(() => {
-    let startTime: number
-    let animationFrame: number
-
-    const animate = (timestamp: number) => {
-      if (!startTime) startTime = timestamp
-      const progress = Math.min((timestamp - startTime) / (duration * 1000), 1)
-      
-      const easeOutQuart = 1 - Math.pow(1 - progress, 4)
-      setCount(Math.floor(easeOutQuart * value))
-
-      if (progress < 1) {
-        animationFrame = requestAnimationFrame(animate)
-      }
-    }
-
-    animationFrame = requestAnimationFrame(animate)
-
-    return () => {
-      if (animationFrame) {
-        cancelAnimationFrame(animationFrame)
-      }
-    }
-  }, [value, duration])
+    const animation = animate(count, value, { duration })
+    return animation.stop
+  }, [count, value, duration])
 
   return (
-    <motion.span
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-    >
-      {prefix}{count}{suffix}
+    <motion.span>
+      {prefix}
+      <motion.span>{rounded}</motion.span>
+      {suffix}
     </motion.span>
   )
 }

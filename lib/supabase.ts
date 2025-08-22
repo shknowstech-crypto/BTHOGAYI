@@ -1,43 +1,35 @@
-import { createClientComponentClient, createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL!
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables')
 }
 
-// Client-side Supabase client
-export const createSupabaseClient = () => createClientComponentClient()
-
-// Server-side Supabase client
-export const createSupabaseServerClient = () => createServerComponentClient({ cookies })
-
-// Admin client for server-side operations
-export const supabaseAdmin = createClient(
-  supabaseUrl,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
+    },
+  },
+})
 
 // Database types
 export interface UserProfile {
   id: string
-  email: string
+  bits_email: string
+  student_id: string
   display_name: string
   username: string
   profile_photo?: string
   bio?: string
   age?: number
   gender?: 'male' | 'female' | 'other'
-  interests: string[]
   year: number
   branch: string
   campus: 'Pilani' | 'Goa' | 'Hyderabad' | 'Dubai'
@@ -46,11 +38,15 @@ export interface UserProfile {
     dating_similarity: 1 | -1
     gender_preference?: 'male' | 'female' | 'any'
     age_range: [number, number]
-    looking_for: ('friends' | 'dating' | 'networking')[]
+    max_distance?: number
   }
+  email_verified: boolean
+  student_id_verified: boolean
+  photo_verified: boolean
+  verified: boolean
   is_active: boolean
-  profile_completed: boolean
   last_seen: string
+  streak_count: number
   created_at: string
   updated_at: string
 }
@@ -105,13 +101,34 @@ export interface DailyMatch {
   acted_at?: string
 }
 
-export interface Invitation {
+export interface UserInterest {
   id: string
-  inviter_id: string
-  invitee_email: string
-  invitation_code: string
-  status: 'pending' | 'accepted' | 'expired'
-  expires_at: string
+  user_id: string
+  interest: string
+  weight: number
   created_at: string
-  accepted_at?: string
+}
+
+export interface Report {
+  id: string
+  reporter_id: string
+  reported_user_id: string
+  report_type: 'harassment' | 'spam' | 'fake_profile' | 'inappropriate_content' | 'other'
+  description?: string
+  evidence_urls?: string[]
+  status: 'pending' | 'investigating' | 'resolved' | 'dismissed'
+  moderator_notes?: string
+  created_at: string
+  resolved_at?: string
+}
+
+export interface Notification {
+  id: string
+  user_id: string
+  type: 'match' | 'message' | 'ship' | 'connection_request' | 'daily_match'
+  title: string
+  message: string
+  data: Record<string, any>
+  read: boolean
+  created_at: string
 }

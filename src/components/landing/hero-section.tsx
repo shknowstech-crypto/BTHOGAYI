@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { ArrowRight, Heart, Users, Sparkles, MessageCircle, Play } from 'lucide-react'
+import { ArrowRight, Heart, Users, Sparkles, MessageCircle, Play, Star } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { GradientButton } from '@/components/ui/gradient-button'
 
@@ -10,14 +10,14 @@ export function HeroSection() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900">
-      {/* Animated Background */}
+      {/* Enhanced Animated Background */}
       <div className="absolute inset-0">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(120,119,198,0.1),transparent_70%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(255,119,198,0.1),transparent_70%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(120,219,255,0.1),transparent_70%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(120,119,198,0.15),transparent_70%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(255,119,198,0.15),transparent_70%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(120,219,255,0.15),transparent_70%)]" />
         
-        {/* Floating Elements */}
-        {Array.from({ length: 20 }).map((_, i) => (
+        {/* Enhanced Floating Elements */}
+        {Array.from({ length: 30 }).map((_, i) => (
           <motion.div
             key={i}
             className="absolute w-2 h-2 bg-white/20 rounded-full"
@@ -26,11 +26,12 @@ export function HeroSection() {
               top: `${Math.random() * 100}%`,
             }}
             animate={{
-              y: [0, -20, 0],
+              y: [0, -30, 0],
               opacity: [0.2, 0.8, 0.2],
+              scale: [1, 1.2, 1],
             }}
             transition={{
-              duration: 3 + Math.random() * 2,
+              duration: 4 + Math.random() * 2,
               repeat: Infinity,
               delay: Math.random() * 2,
             }}
@@ -43,18 +44,23 @@ export function HeroSection() {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left Content */}
             <div className="text-center lg:text-left">
-              {/* Badge */}
+              {/* Enhanced Badge */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
-                className="inline-flex items-center px-4 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full mb-8"
+                className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-sm border border-white/20 rounded-full mb-8"
               >
                 <Sparkles className="w-4 h-4 text-yellow-400 mr-2" />
                 <span className="text-white/90 text-sm font-medium">Exclusive to BITS Students</span>
+                <div className="ml-2 flex">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-3 h-3 text-yellow-400 fill-current" />
+                  ))}
+                </div>
               </motion.div>
 
-              {/* Main Headline */}
+              {/* Enhanced Main Headline */}
               <motion.h1
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -62,13 +68,23 @@ export function HeroSection() {
                 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight"
               >
                 Find Your Perfect{' '}
-                <span className="bg-gradient-to-r from-pink-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent">
+                <motion.span 
+                  className="bg-gradient-to-r from-pink-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent"
+                  animate={{ 
+                    backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
+                  }}
+                  transition={{ 
+                    duration: 3,
+                    repeat: Infinity,
+                    ease: 'linear'
+                  }}
+                >
                   Match
-                </span>
+                </motion.span>
                 <br />at BITS
               </motion.h1>
 
-              {/* Subheadline */}
+              {/* Enhanced Subheadline */}
               <motion.p
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -76,31 +92,47 @@ export function HeroSection() {
                 className="text-lg md:text-xl text-white/80 mb-8 leading-relaxed max-w-2xl mx-auto lg:mx-0"
               >
                 Connect with fellow BITS students through AI-powered matching. 
-                Find friends, dates, and meaningful relationships across all campuses.
+                Find friends, dates, and meaningful relationships across all campuses with our smart algorithm.
               </motion.p>
 
-              {/* Stats */}
+              {/* Enhanced Stats */}
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.6 }}
                 className="flex flex-wrap justify-center lg:justify-start gap-8 mb-8"
               >
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-white">1000+</div>
-                  <div className="text-white/60 text-sm">Students</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-pink-400">500+</div>
-                  <div className="text-white/60 text-sm">Matches</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-400">4</div>
-                  <div className="text-white/60 text-sm">Campuses</div>
-                </div>
+                <motion.div 
+                  className="text-center"
+                  whileHover={{ scale: 1.05 }}
+                >
+                  <div className="text-3xl font-bold text-white">1000+</div>
+                  <div className="text-white/60 text-sm">Active Students</div>
+                </motion.div>
+                <motion.div 
+                  className="text-center"
+                  whileHover={{ scale: 1.05 }}
+                >
+                  <div className="text-3xl font-bold text-pink-400">500+</div>
+                  <div className="text-white/60 text-sm">Successful Matches</div>
+                </motion.div>
+                <motion.div 
+                  className="text-center"
+                  whileHover={{ scale: 1.05 }}
+                >
+                  <div className="text-3xl font-bold text-purple-400">4</div>
+                  <div className="text-white/60 text-sm">BITS Campuses</div>
+                </motion.div>
+                <motion.div 
+                  className="text-center"
+                  whileHover={{ scale: 1.05 }}
+                >
+                  <div className="text-3xl font-bold text-cyan-400">24/7</div>
+                  <div className="text-white/60 text-sm">Safe & Secure</div>
+                </motion.div>
               </motion.div>
 
-              {/* CTA Buttons */}
+              {/* Enhanced CTA Buttons */}
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -111,99 +143,191 @@ export function HeroSection() {
                   size="lg"
                   variant="primary"
                   onClick={() => navigate('/auth')}
-                  className="group"
+                  className="group shadow-2xl"
                 >
                   Get Started Free
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </GradientButton>
                 
-                <button
+                <motion.button
                   onClick={() => {
                     document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })
                   }}
-                  className="flex items-center justify-center gap-2 px-6 py-3 text-white/80 hover:text-white transition-colors group"
+                  className="flex items-center justify-center gap-3 px-6 py-3 text-white/80 hover:text-white transition-colors group"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  <div className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors">
+                  <motion.div 
+                    className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors backdrop-blur-sm border border-white/20"
+                    whileHover={{ scale: 1.1 }}
+                  >
                     <Play className="w-5 h-5 ml-1" />
-                  </div>
-                  <span>See How It Works</span>
-                </button>
+                  </motion.div>
+                  <span className="font-medium">See How It Works</span>
+                </motion.button>
+              </motion.div>
+
+              {/* Trust Indicators */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 1 }}
+                className="mt-8 flex flex-wrap justify-center lg:justify-start gap-6 text-white/60 text-sm"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                  <span>100% Verified Students</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                  <span>End-to-End Encrypted</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+                  <span>AI-Powered Matching</span>
+                </div>
               </motion.div>
             </div>
 
-            {/* Right Content - App Preview */}
+            {/* Enhanced Right Content - App Preview */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
+              initial={{ opacity: 0, scale: 0.8, rotateY: 20 }}
+              animate={{ opacity: 1, scale: 1, rotateY: 0 }}
               transition={{ duration: 1, delay: 0.5 }}
               className="relative"
             >
               <div className="relative mx-auto w-80 h-[600px]">
-                {/* Phone Frame */}
-                <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 rounded-[3rem] p-2 shadow-2xl">
+                {/* Enhanced Phone Frame */}
+                <motion.div 
+                  className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 rounded-[3rem] p-2 shadow-2xl"
+                  whileHover={{ scale: 1.02 }}
+                  transition={{ duration: 0.3 }}
+                >
                   <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-pink-500 rounded-[2.5rem] p-1">
                     <div className="w-full h-full bg-black rounded-[2rem] overflow-hidden">
-                      {/* App Content */}
+                      {/* Enhanced App Content */}
                       <div className="p-6 h-full flex flex-col">
                         {/* Header */}
                         <div className="flex items-center justify-between mb-8">
                           <div className="flex items-center gap-2">
-                            <Heart className="w-6 h-6 text-pink-400" />
+                            <motion.div
+                              animate={{ rotate: [0, 10, -10, 0] }}
+                              transition={{ duration: 2, repeat: Infinity }}
+                            >
+                              <Heart className="w-6 h-6 text-pink-400" />
+                            </motion.div>
                             <span className="text-white font-bold">BITSPARK</span>
                           </div>
-                          <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full" />
+                          <motion.div 
+                            className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"
+                            animate={{ scale: [1, 1.1, 1] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                          />
                         </div>
 
-                        {/* Features Grid */}
+                        {/* Enhanced Features Grid */}
                         <div className="grid grid-cols-2 gap-4 flex-1">
-                          <div className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-2xl p-4 border border-white/10">
+                          <motion.div 
+                            className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-2xl p-4 border border-white/10"
+                            whileHover={{ scale: 1.05 }}
+                            animate={{ y: [0, -2, 0] }}
+                            transition={{ duration: 3, repeat: Infinity, delay: 0 }}
+                          >
                             <Users className="w-6 h-6 text-blue-400 mb-2" />
                             <div className="text-white text-sm font-medium">Connect</div>
                             <div className="text-white/60 text-xs">Find Friends</div>
-                          </div>
-                          <div className="bg-gradient-to-br from-pink-500/20 to-rose-500/20 rounded-2xl p-4 border border-white/10">
+                          </motion.div>
+                          
+                          <motion.div 
+                            className="bg-gradient-to-br from-pink-500/20 to-rose-500/20 rounded-2xl p-4 border border-white/10"
+                            whileHover={{ scale: 1.05 }}
+                            animate={{ y: [0, -2, 0] }}
+                            transition={{ duration: 3, repeat: Infinity, delay: 0.5 }}
+                          >
                             <Heart className="w-6 h-6 text-pink-400 mb-2" />
                             <div className="text-white text-sm font-medium">Dating</div>
                             <div className="text-white/60 text-xs">Find Love</div>
-                          </div>
-                          <div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-2xl p-4 border border-white/10">
+                          </motion.div>
+                          
+                          <motion.div 
+                            className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-2xl p-4 border border-white/10"
+                            whileHover={{ scale: 1.05 }}
+                            animate={{ y: [0, -2, 0] }}
+                            transition={{ duration: 3, repeat: Infinity, delay: 1 }}
+                          >
                             <MessageCircle className="w-6 h-6 text-purple-400 mb-2" />
                             <div className="text-white text-sm font-medium">Messages</div>
                             <div className="text-white/60 text-xs">5 Msg Limit</div>
-                          </div>
-                          <div className="bg-gradient-to-br from-indigo-500/20 to-cyan-500/20 rounded-2xl p-4 border border-white/10">
+                          </motion.div>
+                          
+                          <motion.div 
+                            className="bg-gradient-to-br from-indigo-500/20 to-cyan-500/20 rounded-2xl p-4 border border-white/10"
+                            whileHover={{ scale: 1.05 }}
+                            animate={{ y: [0, -2, 0] }}
+                            transition={{ duration: 3, repeat: Infinity, delay: 1.5 }}
+                          >
                             <Sparkles className="w-6 h-6 text-cyan-400 mb-2" />
                             <div className="text-white text-sm font-medium">Daily Match</div>
                             <div className="text-white/60 text-xs">AI Powered</div>
-                          </div>
+                          </motion.div>
                         </div>
 
-                        {/* Bottom CTA */}
+                        {/* Enhanced Bottom CTA */}
                         <div className="mt-6">
-                          <div className="bg-gradient-to-r from-pink-500 to-purple-500 rounded-xl p-3 text-center">
-                            <div className="text-white font-medium text-sm">Join Now</div>
-                          </div>
+                          <motion.div 
+                            className="bg-gradient-to-r from-pink-500 to-purple-500 rounded-xl p-3 text-center"
+                            whileHover={{ scale: 1.02 }}
+                            animate={{ 
+                              boxShadow: [
+                                '0 0 20px rgba(236, 72, 153, 0.3)',
+                                '0 0 30px rgba(168, 85, 247, 0.4)',
+                                '0 0 20px rgba(236, 72, 153, 0.3)'
+                              ]
+                            }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                          >
+                            <div className="text-white font-medium text-sm">Join Now - It's Free!</div>
+                          </motion.div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                </motion.div>
 
-                {/* Floating Elements */}
+                {/* Enhanced Floating Elements */}
                 <motion.div
-                  animate={{ y: [0, -10, 0], rotate: [0, 5, 0] }}
-                  transition={{ duration: 3, repeat: Infinity }}
-                  className="absolute -top-4 -right-4 w-16 h-16 bg-gradient-to-r from-pink-500 to-rose-500 rounded-2xl flex items-center justify-center shadow-lg"
+                  animate={{ 
+                    y: [0, -15, 0], 
+                    rotate: [0, 8, -8, 0],
+                    scale: [1, 1.05, 1]
+                  }}
+                  transition={{ duration: 4, repeat: Infinity }}
+                  className="absolute -top-4 -right-4 w-16 h-16 bg-gradient-to-r from-pink-500 to-rose-500 rounded-2xl flex items-center justify-center shadow-2xl"
                 >
                   <Heart className="w-8 h-8 text-white" />
                 </motion.div>
 
                 <motion.div
-                  animate={{ y: [0, 10, 0], rotate: [0, -5, 0] }}
-                  transition={{ duration: 4, repeat: Infinity, delay: 1 }}
-                  className="absolute -bottom-4 -left-4 w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg"
+                  animate={{ 
+                    y: [0, 15, 0], 
+                    rotate: [0, -8, 8, 0],
+                    scale: [1, 1.05, 1]
+                  }}
+                  transition={{ duration: 5, repeat: Infinity, delay: 1 }}
+                  className="absolute -bottom-4 -left-4 w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-2xl"
                 >
                   <Users className="w-8 h-8 text-white" />
+                </motion.div>
+
+                <motion.div
+                  animate={{ 
+                    x: [0, 10, -10, 0],
+                    scale: [1, 1.1, 1]
+                  }}
+                  transition={{ duration: 3, repeat: Infinity, delay: 2 }}
+                  className="absolute top-1/2 -left-6 w-12 h-12 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full flex items-center justify-center shadow-xl"
+                >
+                  <Sparkles className="w-6 h-6 text-white" />
                 </motion.div>
               </div>
             </motion.div>
@@ -211,7 +335,7 @@ export function HeroSection() {
         </div>
       </div>
 
-      {/* Scroll Indicator */}
+      {/* Enhanced Scroll Indicator */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -221,7 +345,7 @@ export function HeroSection() {
         <motion.div
           animate={{ y: [0, 8, 0] }}
           transition={{ duration: 2, repeat: Infinity }}
-          className="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center cursor-pointer"
+          className="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center cursor-pointer hover:border-white/50 transition-colors"
           onClick={() => {
             document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })
           }}

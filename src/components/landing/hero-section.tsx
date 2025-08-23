@@ -131,7 +131,7 @@ export function HeroSection() {
                 >
                   <div className="text-3xl font-bold text-yellow-400">24/7</div>
                   <div className="text-white/60 text-sm">Safe & Secure</div>
-                </div>
+                </motion.div>
               </motion.div>
 
               {/* Enhanced CTA Buttons */}

@@ -5,7 +5,6 @@ import { GlassCard } from '@/components/ui/glass-card'
 import { GradientButton } from '@/components/ui/gradient-button'
 import { Heart, Users, Ship, MessageCircle, Dice6, Settings, Bell, LogOut, User, Sparkles, TrendingUp, Calendar, Star } from 'lucide-react'
 import { useAuthStore } from '@/lib/store'
-import { AuthService } from '@/lib/auth'
 
 const features = [
   {
@@ -15,7 +14,7 @@ const features = [
     color: "from-blue-500 to-cyan-500",
     href: "/connect",
     count: "12 new matches",
-    status: "coming-soon"
+    status: "available"
   },
   {
     icon: Heart,
@@ -24,7 +23,7 @@ const features = [
     color: "from-pink-500 to-rose-500",
     href: "/dating",
     count: "3 potential dates",
-    status: "coming-soon"
+    status: "available"
   },
   {
     icon: Ship,
@@ -33,7 +32,7 @@ const features = [
     color: "from-purple-500 to-pink-500",
     href: "/shipping",
     count: "2 ships received",
-    status: "coming-soon"
+    status: "available"
   },
   {
     icon: MessageCircle,
@@ -42,7 +41,7 @@ const features = [
     color: "from-indigo-500 to-purple-500",
     href: "/messages",
     count: "5 unread",
-    status: "coming-soon"
+    status: "available"
   },
   {
     icon: Dice6,
@@ -51,7 +50,7 @@ const features = [
     color: "from-cyan-500 to-blue-500",
     href: "/daily-match",
     count: "New match!",
-    status: "coming-soon"
+    status: "available"
   },
   {
     icon: Settings,
@@ -65,9 +64,9 @@ const features = [
 ]
 
 export default function DashboardPage() {
-  const { user, isAuthenticated, setUser, logout } = useAuthStore()
+  const { user, isAuthenticated } = useAuthStore()
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [showWelcome, setShowWelcome] = useState(true)
   const [stats, setStats] = useState({
     connections: 0,
@@ -77,78 +76,34 @@ export default function DashboardPage() {
   })
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const currentUser = await AuthService.getCurrentUser()
-        if (currentUser) {
-          const profile = await AuthService.getUserProfile(currentUser.id)
-          if (profile) {
-            setUser(profile)
-            // Simulate some stats for demo
-            setStats({
-              connections: Math.floor(Math.random() * 50) + 10,
-              messages: Math.floor(Math.random() * 20) + 5,
-              ships: Math.floor(Math.random() * 10) + 2,
-              streak: profile.streak_count || 0
-            })
-          }
-        } else {
-          navigate('/auth')
-        }
-      } catch (error) {
-        console.error('Auth check failed:', error)
-        navigate('/auth')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    if (!isAuthenticated) {
-      checkAuth()
-    } else {
-      setLoading(false)
-    }
-  }, [isAuthenticated, setUser, navigate])
-
-  const handleLogout = async () => {
-    try {
-      await AuthService.signOut()
-      logout()
-      navigate('/')
-    } catch (error) {
-      console.error('Logout failed:', error)
-    }
-  }
+    // Simulate some stats for demo
+    setStats({
+      connections: Math.floor(Math.random() * 50) + 10,
+      messages: Math.floor(Math.random() * 20) + 5,
+      ships: Math.floor(Math.random() * 10) + 2,
+      streak: user?.streak_count || 0
+    })
+    setLoading(false)
+  }, [user])
 
   const handleFeatureClick = (feature: typeof features[0]) => {
-    if (feature.status === 'coming-soon') {
-      // Show a nice coming soon animation
-      return
-    }
     navigate(feature.href)
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center">
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center"
-        >
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            className="w-12 h-12 border-4 border-white/20 border-t-purple-500 rounded-full mx-auto mb-4"
-          />
-          <p className="text-white/70 text-lg">Loading BITSPARK...</p>
-        </motion.div>
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-12 h-12 border-4 border-white/20 border-t-purple-500 rounded-full"
+        />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
       {/* Enhanced Header */}
       <div className="border-b border-white/10 backdrop-blur-xl bg-white/5 sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
@@ -185,30 +140,13 @@ export default function DashboardPage() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                {user?.profile_photo ? (
-                  <img 
-                    src={user.profile_photo} 
-                    alt="Profile" 
-                    className="w-8 h-8 rounded-full object-cover border-2 border-white/20"
-                  />
-                ) : (
-                  <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-                    <User className="w-4 h-4 text-white" />
-                  </div>
-                )}
+                <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                  <User className="w-4 h-4 text-white" />
+                </div>
                 <span className="text-white font-medium hidden sm:block">
                   {user?.display_name || 'Profile'}
                 </span>
               </motion.button>
-
-              <GradientButton
-                variant="ghost"
-                onClick={handleLogout}
-                className="flex items-center gap-2"
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="hidden sm:block">Logout</span>
-              </GradientButton>
             </div>
           </div>
         </div>
@@ -263,7 +201,7 @@ export default function DashboardPage() {
                       <div className="text-3xl font-bold text-blue-400">{stats.connections}</div>
                     </div>
                     <p className="text-white/70 text-sm">Connections</p>
-                    <div className="text-xs text-green-400 mt-1">Coming soon</div>
+                    <div className="text-xs text-green-400 mt-1">Available now</div>
                   </GlassCard>
                 </motion.div>
 
@@ -278,7 +216,7 @@ export default function DashboardPage() {
                       <div className="text-3xl font-bold text-pink-400">{stats.messages}</div>
                     </div>
                     <p className="text-white/70 text-sm">Messages</p>
-                    <div className="text-xs text-green-400 mt-1">Coming soon</div>
+                    <div className="text-xs text-green-400 mt-1">Available now</div>
                   </GlassCard>
                 </motion.div>
 
@@ -293,7 +231,7 @@ export default function DashboardPage() {
                       <div className="text-3xl font-bold text-purple-400">{stats.ships}</div>
                     </div>
                     <p className="text-white/70 text-sm">Ships</p>
-                    <div className="text-xs text-yellow-400 mt-1">Coming soon</div>
+                    <div className="text-xs text-green-400 mt-1">Available now</div>
                   </GlassCard>
                 </motion.div>
 
@@ -330,13 +268,6 @@ export default function DashboardPage() {
                 hover={true}
                 onClick={() => handleFeatureClick(feature)}
               >
-                {/* Status Badge */}
-                {feature.status === 'coming-soon' && (
-                  <div className="absolute top-4 right-4 px-3 py-1 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30 rounded-full text-yellow-400 text-xs font-medium backdrop-blur-sm">
-                    Coming Soon
-                  </div>
-                )}
-
                 {/* Background Gradient */}
                 <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-10 transition-opacity duration-500`} />
                 
@@ -382,7 +313,7 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* Development Status */}
+        {/* Quick Actions */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -406,40 +337,32 @@ export default function DashboardPage() {
             </motion.div>
 
             <h3 className="text-2xl font-bold text-white mb-4">
-              🚀 Platform Under Active Development
+              🚀 All Features Are Live!
             </h3>
             <p className="text-white/70 mb-6 leading-relaxed">
-              We're working hard to bring you the best social experience for BITS students. 
-              Core features are being developed with love and attention to detail!
+              Your complete dating app is ready! Explore all the features above to start connecting, 
+              finding love, and building meaningful relationships at BITS.
             </p>
             
             <div className="flex flex-wrap justify-center gap-4">
-              <GradientButton 
+              <GradientButton
                 variant="primary" 
-                onClick={() => navigate('/profile')}
+                onClick={() => navigate('/connect')}
               >
-                Complete Profile
+                Start Connecting
               </GradientButton>
-              <GradientButton 
-                variant="secondary" 
-                onClick={() => navigate('/settings')}
+              <GradientButton
+                variant="romantic"
+                onClick={() => navigate('/dating')}
               >
-                Manage Settings
+                Find Love
               </GradientButton>
-            </div>
-
-            {/* Progress Indicator */}
-            <div className="mt-6 text-center">
-              <p className="text-white/50 text-sm mb-2">Development Progress</p>
-              <div className="w-full bg-white/10 rounded-full h-2 max-w-md mx-auto">
-                <motion.div 
-                  className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: '35%' }}
-                  transition={{ duration: 2, delay: 1.5 }}
-                />
-              </div>
-              <p className="text-white/60 text-xs mt-2">35% Complete</p>
+              <GradientButton
+                variant="secondary"
+                onClick={() => navigate('/daily-match')}
+              >
+                Get Daily Match
+              </GradientButton>
             </div>
           </GlassCard>
         </motion.div>

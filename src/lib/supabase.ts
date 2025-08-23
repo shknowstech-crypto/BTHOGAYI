@@ -1,10 +1,13 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL!
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables')
+  console.error('Missing Supabase environment variables:')
+  console.error('VITE_SUPABASE_URL:', supabaseUrl)
+  console.error('VITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? '***' : 'missing')
+  throw new Error('Missing Supabase environment variables. Please check your .env file.')
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -98,6 +101,7 @@ export interface DailyMatch {
   compatibility_score: number
   viewed: boolean
   action: 'pass' | 'connect' | 'super_like' | null
+  match_reason?: string
   created_at: string
   acted_at?: string
 }

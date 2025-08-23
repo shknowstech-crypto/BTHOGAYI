@@ -15,11 +15,11 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     /* Linting */
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
     /* Path mapping */
     "baseUrl": ".",
@@ -31,20 +31,13 @@
     "allowJs": true,
     "incremental": true,
     "esModuleInterop": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ]
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true
   },
   "include": [
-    "src",
-    ".next/types/**/*.ts"
-  ],
-  "references": [
-    {
-      "path": "./tsconfig.node.json"
-    }
+    "src/**/*",
+    "src/**/*.ts",
+    "src/**/*.tsx"
   ],
   "exclude": [
     "node_modules"

@@ -91,8 +91,9 @@ export function HeroSection() {
                 transition={{ duration: 0.8, delay: 0.4 }}
                 className="text-lg md:text-xl text-white/80 mb-8 leading-relaxed max-w-2xl mx-auto lg:mx-0"
               >
-                Connect with fellow BITS students through AI-powered matching. 
-                Find friends, dates, and meaningful relationships across all campuses with our smart algorithm.
+                Swipe right on friendship, love, and meaningful connections. 
+                Our AI-powered algorithm matches you with fellow BITS students based on interests, 
+                personality, and compatibility. It's time to find your tribe! 💕
               </motion.p>
 
               {/* Enhanced Stats */}
@@ -145,7 +146,7 @@ export function HeroSection() {
                   onClick={() => navigate('/auth')}
                   className="group shadow-2xl"
                 >
-                  Get Started Free
+                  Start Swiping Now! 💖
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </GradientButton>
                 
@@ -176,15 +177,15 @@ export function HeroSection() {
               >
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                  <span>100% Verified Students</span>
+                  <span>100% Verified BITS Students</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                  <span>End-to-End Encrypted</span>
+                  <span>AI-Powered Smart Matching</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
-                  <span>AI-Powered Matching</span>
+                  <span>Safe & Private Dating</span>
                 </div>
               </motion.div>
             </div>

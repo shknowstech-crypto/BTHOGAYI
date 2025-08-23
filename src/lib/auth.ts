@@ -160,4 +160,21 @@ export class AuthService {
     if (error) throw error
     return data
   }
+
+  // Sign in with Google OAuth
+  static async signInWithGoogle() {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+      },
+    })
+
+    if (error) throw error
+    return data
+  }
 }

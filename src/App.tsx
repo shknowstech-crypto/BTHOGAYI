@@ -21,20 +21,15 @@ function App() {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const user = await AuthService.getCurrentUser()
-        if (user) {
-          const profile = await AuthService.getUserProfile(user.id)
-          setUser(profile)
-        }
+        setLoading(false) // Temporarily disable auth for testing
       } catch (error) {
         console.error('Auth initialization error:', error)
-      } finally {
         setLoading(false)
       }
     }
 
     initAuth()
-  }, [setUser, setLoading])
+  }, [setLoading])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">

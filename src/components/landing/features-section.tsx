@@ -10,15 +10,15 @@ const features = [
     icon: Users,
     title: "CONNECT",
     subtitle: "Find Your Tribe",
-    description: "AI-powered friend matching based on interests, personality, and campus activities. Build lasting friendships with like-minded BITSians.",
+    description: "Swipe through profiles to find friends with similar interests, hobbies, and campus vibes. Build your BITS social circle one swipe at a time! 👥",
     gradient: "from-blue-500 to-cyan-500",
     stats: "1000+ connections made"
   },
   {
     icon: Heart,
-    title: "FIND A DATE",
+    title: "FIND LOVE",
     subtitle: "Romantic Connections",
-    description: "Discover meaningful romantic relationships for dates, proms, and special events. Our algorithm finds your perfect match.",
+    description: "Discover your perfect match for dates, proms, and romantic adventures. Our AI algorithm finds people who share your values and interests. 💕",
     gradient: "from-pink-500 to-rose-500",
     stats: "500+ couples formed"
   },
@@ -26,7 +26,7 @@ const features = [
     icon: Ship,
     title: "SHIPPING",
     subtitle: "Friends as Cupids",
-    description: "Let your friends play matchmaker! Anonymous shipping feature where friends can suggest perfect matches for you.",
+    description: "Let your friends play matchmaker! Send anonymous ships to connect people you think would be perfect together. Be the cupid! 🚢",
     gradient: "from-purple-500 to-pink-500",
     stats: "300+ ships sent"
   },
@@ -34,7 +34,7 @@ const features = [
     icon: MessageCircle,
     title: "SMART MESSAGING",
     subtitle: "Quality over Quantity",
-    description: "5 meaningful messages to make the perfect first impression, then seamlessly move to your preferred platform.",
+    description: "5 meaningful messages to make the perfect first impression. No spam, just genuine conversations that lead to real connections. 💬",
     gradient: "from-indigo-500 to-purple-500",
     stats: "95% response rate"
   },
@@ -42,7 +42,7 @@ const features = [
     icon: Dice6,
     title: "DAILY MATCH",
     subtitle: "Serendipity Every Day",
-    description: "Discover someone new every day with our AI algorithm. Each match is carefully curated based on compatibility.",
+    description: "Get a fresh match every day! Our AI carefully curates each recommendation based on compatibility, interests, and mutual attraction. ✨",
     gradient: "from-cyan-500 to-blue-500",
     stats: "Daily surprises"
   },
@@ -50,7 +50,7 @@ const features = [
     icon: Coffee,
     title: "GROUP ROOMS",
     subtitle: "Community Building",
-    description: "Join study groups, hobby clubs, and event planning communities. Build connections beyond one-on-one interactions.",
+    description: "Join study groups, hobby clubs, and event planning communities. Build connections beyond one-on-one interactions. 🎉",
     gradient: "from-orange-500 to-red-500",
     stats: "Coming soon"
   }
@@ -80,11 +80,11 @@ export function FeaturesSection() {
           <h2 className="text-4xl md:text-6xl font-bold text-white mb-6">
             Everything You Need to{' '}
             <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-              Connect
+              Find Love & Friends
             </span>
           </h2>
           <p className="text-xl text-white/70 max-w-3xl mx-auto leading-relaxed">
-            Discover meaningful connections with fellow BITS students through our comprehensive platform
+            Swipe, match, and connect with fellow BITS students. Find your perfect match for friendship, dating, and everything in between! 💖
           </p>
         </motion.div>
 
@@ -143,7 +143,7 @@ export function FeaturesSection() {
           className="text-center mt-16"
         >
           <GradientButton size="lg" variant="primary">
-            Start Connecting Today
+            Start Swiping & Matching! 💕
             <ArrowRight className="w-5 h-5" />
           </GradientButton>
         </motion.div>

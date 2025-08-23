@@ -3,15 +3,15 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { GlassCard } from '@/components/ui/glass-card'
 import { GradientButton } from '@/components/ui/gradient-button'
+import { ServerStatusIndicator } from '@/components/ui/server-status-indicator'
 import { Sparkles, ArrowLeft, Heart, Users, Star, MapPin, GraduationCap, Calendar, Flame, Trophy, Gift } from 'lucide-react'
 import { useAuthStore } from '@/lib/store'
-import { supabase } from '@/lib/supabase'
-import { UserProfile, DailyMatch } from '@/lib/supabase'
+import { supabase, UserProfile, DailyMatch } from '@/lib/supabase'
+import { recommendationAPI } from '@/lib/recommendation-api'
+import type { RecommendationItem } from '@/lib/recommendation-api'
 
-interface DailyMatchProfile extends UserProfile {
+interface DailyMatchProfile extends UserProfile, RecommendationItem {
   match_reason: string
-  compatibility_score: number
-  common_interests: string[]
   suggested_activity: string
 }
 
@@ -66,7 +66,10 @@ export default function DailyMatchPage() {
         }
       } else {
         // Generate new daily match
-        await generateNewDailyMatch()
+        const newMatch = await generateNewDailyMatch()
+        if (newMatch) {
+          setTodayMatch(newMatch)
+        }
       }
     } catch (error) {
       console.error('Error loading daily match:', error)
@@ -75,103 +78,60 @@ export default function DailyMatchPage() {
     }
   }
 
-  const generateNewDailyMatch = async () => {
+  const generateNewDailyMatch = async (): Promise<DailyMatchProfile | null> => {
     try {
-      // Get users from the same campus with high compatibility
-      const { data: users, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('campus', user?.campus)
-        .neq('id', user?.id)
-        .eq('is_active', true)
-        .limit(100)
+      // Use recommendation API for daily match
+      const response = await recommendationAPI.getRecommendations({
+        user_id: user?.id!,
+        recommendation_type: 'daily_match',
+        limit: 1,
+        filters: {
+          min_compatibility_score: 0.6,
+          verified_only: true,
+          active_recently: true
+        }
+      })
 
-      if (error) throw error
-
-      // Calculate compatibility and select best match
-      const matches = users
-        .map((u: UserProfile) => ({
-          ...u,
-          compatibility_score: calculateDailyCompatibility(u),
-          common_interests: getCommonInterests(u),
-          suggested_activity: generateSuggestedActivity(u)
-        }))
-        .filter((m: any) => m.compatibility_score > 0.6)
-        .sort((a: any, b: any) => b.compatibility_score - a.compatibility_score)
-
-      if (matches.length > 0) {
-        const bestMatch = matches[0]
-        const matchReason = generateMatchReason(bestMatch)
+      if (response.recommendations.length > 0) {
+        const rec = response.recommendations[0]
         
-        setTodayMatch({
-          ...bestMatch,
-          match_reason: matchReason,
-          compatibility_score: bestMatch.compatibility_score
-        })
+        // Get full user profile
+        const { data: userProfile } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', rec.user_id)
+          .single()
+
+        if (userProfile) {
+          const dailyMatch: DailyMatchProfile = {
+            ...userProfile,
+            ...rec,
+            match_reason: rec.explanation || generateMatchReason(userProfile),
+            suggested_activity: generateSuggestedActivity(userProfile)
+          }
 
         // Save daily match to database
         await supabase
           .from('daily_matches')
           .insert({
             user_id: user?.id,
-            matched_user_id: bestMatch.id,
+            matched_user_id: userProfile.id,
             match_date: new Date().toISOString().split('T')[0],
             algorithm_version: 'v1.0',
-            compatibility_score: bestMatch.compatibility_score,
+            compatibility_score: rec.compatibility_score,
             viewed: false,
             created_at: new Date().toISOString()
           })
+
+          return dailyMatch
+        }
       }
+      
+      return null
     } catch (error) {
       console.error('Error generating daily match:', error)
+      return null
     }
-  }
-
-  const calculateDailyCompatibility = (otherUser: UserProfile): number => {
-    if (!user) return 0
-    
-    let score = 0
-    let factors = 0
-
-    // Interest similarity (40%)
-    if (user.interests && otherUser.interests) {
-      const common = user.interests.filter(i => otherUser.interests.includes(i))
-      score += (common.length / Math.max(user.interests.length, otherUser.interests.length)) * 0.4
-      factors += 0.4
-    }
-
-    // Academic compatibility (25%)
-    const yearDiff = Math.abs((user.year || 1) - (otherUser.year || 1))
-    score += Math.max(0, (4 - yearDiff) / 4) * 0.25
-    factors += 0.25
-
-    // Activity level (20%)
-    const lastSeen = new Date(otherUser.last_seen).getTime()
-    const now = Date.now()
-    const daysSince = (now - lastSeen) / (1000 * 60 * 60 * 24)
-    if (daysSince < 5) score += 0.20
-    factors += 0.20
-
-    // Profile completeness (15%)
-    const profileCompleteness = calculateProfileCompleteness(otherUser)
-    score += profileCompleteness * 0.15
-    factors += 0.15
-
-    return factors > 0 ? score / factors : 0
-  }
-
-  const calculateProfileCompleteness = (otherUser: UserProfile): number => {
-    let completeness = 0
-    if (otherUser.profile_photo) completeness += 0.3
-    if (otherUser.bio) completeness += 0.2
-    if (otherUser.interests && otherUser.interests.length > 0) completeness += 0.3
-    if (otherUser.age) completeness += 0.2
-    return completeness
-  }
-
-  const getCommonInterests = (otherUser: UserProfile): string[] => {
-    if (!user?.interests || !otherUser.interests) return []
-    return user.interests.filter(i => otherUser.interests.includes(i))
   }
 
   const generateSuggestedActivity = (otherUser: UserProfile): string => {
@@ -246,6 +206,13 @@ export default function DailyMatchPage() {
     setMatchAction(action)
 
     try {
+      // Submit feedback to recommendation API
+      await recommendationAPI.submitFeedback(
+        user?.id!,
+        todayMatch.user_id,
+        action === 'pass' ? 'pass' : action === 'super_like' ? 'super_like' : 'like'
+      )
+      
       // Update daily match with action
       const today = new Date().toISOString().split('T')[0]
       await supabase
@@ -593,6 +560,7 @@ export default function DailyMatchPage() {
         </AnimatePresence>
 
         {/* Streak Reward Modal */}
+        <ServerStatusIndicator />
         <AnimatePresence>
           {showStreakReward && (
             <motion.div

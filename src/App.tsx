@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useAuthStore } from './lib/store'
 import { AuthService } from './lib/auth'
+import { ServerStatusIndicator } from './components/ui/server-status-indicator'
 
 // Pages
 import HomePage from './pages/HomePage'
@@ -33,6 +34,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
+      <ServerStatusIndicator />
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/auth" element={<AuthPage />} />

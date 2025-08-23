@@ -34,12 +34,12 @@ const BRANCHES = [
 
 interface OnboardingData {
   display_name: string
-  student_id: string
   bio: string
   age: number
   gender: 'male' | 'female' | 'other'
   year: number
   branch: string
+  interests: string[]
   preferences: {
     connect_similarity: 1 | -1
     dating_similarity: 1 | -1
@@ -54,12 +54,12 @@ export default function OnboardingPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState<OnboardingData>({
     display_name: user?.display_name || '',
-    student_id: user?.student_id || '',
     bio: '',
     age: 18,
     gender: 'male',
     year: 1,
     branch: '',
+    interests: [],
     preferences: {
       connect_similarity: 1,
       dating_similarity: 1,
@@ -70,6 +70,7 @@ export default function OnboardingPage() {
   const steps = [
     { title: 'Basic Info', icon: User },
     { title: 'Academic', icon: GraduationCap },
+    { title: 'Interests', icon: Heart },
     { title: 'Preferences', icon: Users }
   ]
 
@@ -94,6 +95,7 @@ export default function OnboardingPage() {
     try {
       const updatedProfile = await AuthService.updateUserProfile(user.id, {
         ...formData,
+        profile_completed: true
       })
       
       updateUser(updatedProfile)
@@ -179,19 +181,6 @@ export default function OnboardingPage() {
 
               <div>
                 <label className="block text-white/80 text-sm font-medium mb-2">
-                  Student ID
-                </label>
-                <input
-                  type="text"
-                  value={formData.student_id}
-                  onChange={(e) => setFormData(prev => ({ ...prev, student_id: e.target.value }))}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="e.g., 2021A7PS1234P"
-                />
-              </div>
-
-              <div>
-                <label className="block text-white/80 text-sm font-medium mb-2">
                   Gender
                 </label>
                 <select
@@ -261,8 +250,42 @@ export default function OnboardingPage() {
           </motion.div>
         )
 
-
       case 2:
+        return (
+          <motion.div
+            key="interests"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-6"
+          >
+            <div>
+              <label className="block text-white/80 text-sm font-medium mb-4">
+                What are you interested in? (Select at least 3)
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                {INTERESTS.map(interest => (
+                  <button
+                    key={interest}
+                    onClick={() => toggleInterest(interest)}
+                    className={`p-3 rounded-xl border transition-all ${
+                      formData.interests.includes(interest)
+                        ? 'bg-purple-500/20 border-purple-500/50 text-purple-300'
+                        : 'bg-white/5 border-white/20 text-white/70 hover:bg-white/10'
+                    }`}
+                  >
+                    {interest}
+                  </button>
+                ))}
+              </div>
+              <p className="text-white/50 text-sm mt-2">
+                Selected: {formData.interests.length} interests
+              </p>
+            </div>
+          </motion.div>
+        )
+
+      case 3:
         return (
           <motion.div
             key="preferences"
@@ -378,10 +401,12 @@ export default function OnboardingPage() {
   const isStepValid = () => {
     switch (currentStep) {
       case 0:
-        return formData.display_name && formData.student_id && formData.bio && formData.age >= 16
+        return formData.display_name && formData.bio && formData.age >= 16
       case 1:
         return formData.year && formData.branch
       case 2:
+        return formData.interests.length >= 3
+      case 3:
         return formData.preferences.looking_for.length > 0
       default:
         return false

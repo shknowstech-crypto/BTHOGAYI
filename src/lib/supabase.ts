@@ -37,14 +37,14 @@ export const createSupabaseClient = () => {
 // Database types
 export interface UserProfile {
   id: string
-  email: string
+  bits_email: string
   display_name: string
   username: string
+  student_id: string
   profile_photo?: string
   bio?: string
   age?: number
   gender?: 'male' | 'female' | 'other'
-  interests: string[]
   year: number
   branch: string
   campus: 'Pilani' | 'Goa' | 'Hyderabad' | 'Dubai'
@@ -53,10 +53,13 @@ export interface UserProfile {
     dating_similarity: 1 | -1
     gender_preference?: 'male' | 'female' | 'any'
     age_range: [number, number]
-    looking_for: ('friends' | 'dating' | 'networking')[]
+    max_distance?: number
   }
+  email_verified: boolean
+  student_id_verified: boolean
+  photo_verified: boolean
+  verified: boolean
   is_active: boolean
-  profile_completed: boolean
   last_seen: string
   streak_count?: number
   created_at: string

@@ -16,105 +16,28 @@ export class AuthService {
     return 'Pilani' // Default to Pilani for pilani.bits-pilani.ac.in
   }
 
-  // Sign up with BITS email
-  static async signUp(email: string, password: string, userData: Partial<UserProfile>) {
-    if (!this.validateBitsEmail(email)) {
-      throw new Error('Please use your official BITS email address (@pilani.bits-pilani.ac.in, @goa.bits-pilani.ac.in, @hyderabad.bits-pilani.ac.in, or @dubai.bits-pilani.ac.in)')
-    }
-
-    // Auto-detect campus from email
-    const detectedCampus = this.getCampusFromEmail(email)
-
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
+  // Sign in with Google OAuth
+  static async signInWithGoogle() {
+    const supabase = createSupabaseClient()
+    
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
       options: {
-        data: {
-          display_name: userData.display_name,
-          student_id: userData.student_id,
-          campus: userData.campus || detectedCampus,
+        redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
         },
       },
     })
 
     if (error) throw error
-
-    // Create user profile after successful signup
-    if (data.user) {
-      await this.createUserProfile(data.user.id, {
-        bits_email: email,
-        display_name: userData.display_name || '',
-        student_id: userData.student_id || '',
-        campus: userData.campus || detectedCampus,
-        username: this.generateUsername(userData.display_name || ''),
-        year: userData.year || 1,
-        branch: userData.branch || '',
-        interests: userData.interests || [],
-        preferences: {
-          connect_similarity: 1,
-          dating_similarity: 1,
-          gender_preference: 'any',
-          age_range: [18, 30],
-          max_distance: 50
-        },
-        email_verified: false,
-        student_id_verified: false,
-        photo_verified: false,
-        verified: false,
-        is_active: true,
-        last_seen: new Date().toISOString(),
-        streak_count: 0
-      })
-    }
-
-    return data
-  }
-
-  // Create user profile
-  private static async createUserProfile(userId: string, profileData: Partial<UserProfile>) {
-    const { error } = await supabase
-      .from('users')
-      .insert({
-        id: userId,
-        ...profileData
-      })
-
-    if (error) throw error
-  }
-
-  // Generate unique username
-  private static generateUsername(displayName: string): string {
-    const base = displayName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 10)
-    const random = Math.floor(Math.random() * 1000)
-    return `${base}${random}`
-  }
-
-  // Sign in
-  static async signIn(email: string, password: string) {
-    if (!this.validateBitsEmail(email)) {
-      throw new Error('Please use your BITS email address')
-    }
-    
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-
-    if (error) throw error
-    
-    // Update last seen
-    if (data.user) {
-      await supabase
-        .from('users')
-        .update({ last_seen: new Date().toISOString() })
-        .eq('id', data.user.id)
-    }
-    
     return data
   }
 
   // Sign out
   static async signOut() {
+    const supabase = createSupabaseClient()
     const { error } = await supabase.auth.signOut()
     if (error) throw error
   }
@@ -144,11 +67,51 @@ export class AuthService {
     return data
   }
 
-  // Update user profile
-  static async updateUserProfile(userId: string, updates: Partial<UserProfile>) {
+  // Create user profile from OAuth user
+  static async createUserProfile(user: any): Promise<UserProfile> {
     const supabase = createSupabaseClient()
     
-    // Add updated timestamp
+    const campus = this.getCampusFromEmail(user.email)
+    const username = this.generateUsername(user.user_metadata?.full_name || user.email.split('@')[0])
+    
+    const profileData = {
+      id: user.id,
+      email: user.email,
+      display_name: user.user_metadata?.full_name || user.email.split('@')[0],
+      username: username,
+      profile_photo: user.user_metadata?.avatar_url,
+      campus: campus,
+      year: 1,
+      branch: 'Computer Science',
+      interests: [],
+      preferences: {
+        connect_similarity: 1,
+        dating_similarity: 1,
+        gender_preference: 'any',
+        age_range: [18, 30],
+        looking_for: ['friends']
+      },
+      is_active: true,
+      profile_completed: false,
+      last_seen: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+
+    const { data, error } = await supabase
+      .from('users')
+      .insert(profileData)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  }
+
+  // Update user profile
+  static async updateUserProfile(userId: string, updates: Partial<UserProfile>): Promise<UserProfile> {
+    const supabase = createSupabaseClient()
+    
     const updatesWithTimestamp = {
       ...updates,
       updated_at: new Date().toISOString()
@@ -165,25 +128,25 @@ export class AuthService {
     return data
   }
 
-  // Sign in with Google OAuth
-  static async signInWithGoogle() {
-    const supabase = createSupabaseClient()
-    
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent',
-        },
-      },
-    })
+  // Check if profile is complete
+  static isProfileComplete(user: UserProfile): boolean {
+    return !!(
+      user.display_name &&
+      user.bio &&
+      user.age &&
+      user.year &&
+      user.branch &&
+      user.interests &&
+      user.interests.length >= 3 &&
+      user.preferences?.looking_for &&
+      user.preferences.looking_for.length > 0
+    )
+  }
 
-    if (error) throw error
-    return data
+  // Generate unique username
+  private static generateUsername(displayName: string): string {
+    const base = displayName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 10)
+    const random = Math.floor(Math.random() * 1000)
+    return `${base}${random}`
   }
 }
-    const supabase = createSupabaseClient()
-    const supabase = createSupabaseClient()
-    

@@ -3,34 +3,36 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 255, 255, 255;
-  --background-start-rgb: 15, 23, 42;
-  --background-end-rgb: 30, 41, 59;
-}
-
-@layer base {
-  :root {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 84% 4.9%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 94.1%;
-    --radius: 0.75rem;
-  }
+  /* Modern Romantic Theme Colors */
+  --primary-gradient: linear-gradient(135deg, #FF6B9D, #FF8E8E);
+  --secondary-gradient: linear-gradient(135deg, #667EEA, #764BA2);
+  --accent-gradient: linear-gradient(135deg, #4ECDC4, #44A08D);
+  --warm-gradient: linear-gradient(135deg, #FF7F7F, #FFA07A, #FFD700);
+  
+  /* Background Colors */
+  --bg-primary: #0F0F23;
+  --bg-secondary: #1A1A2E;
+  --bg-tertiary: #16213E;
+  --bg-glass: rgba(255, 255, 255, 0.1);
+  
+  /* Text Colors */
+  --text-primary: #FFFFFF;
+  --text-secondary: rgba(255, 255, 255, 0.8);
+  --text-muted: rgba(255, 255, 255, 0.6);
+  --text-accent: #FF6B9D;
+  
+  /* Accent Colors */
+  --accent-pink: #FF6B9D;
+  --accent-purple: #667EEA;
+  --accent-teal: #4ECDC4;
+  --accent-gold: #FFD700;
+  --accent-green: #48BB78;
+  
+  /* Status Colors */
+  --success: #48BB78;
+  --warning: #F6AD55;
+  --error: #E53E3E;
+  --info: #3182CE;
 }
 
 @layer base {
@@ -43,7 +45,8 @@
   }
   
   body {
-    @apply bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900 text-foreground min-h-screen;
+    @apply text-foreground min-h-screen;
+    background: linear-gradient(135deg, #0F0F23 0%, #1A1A2E 50%, #16213E 100%);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     font-variation-settings: normal;
@@ -58,22 +61,131 @@
     text-wrap: balance;
   }
   
-  .shadow-3xl {
-    box-shadow: 0 35px 60px -12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
-  }
-  
-  .backdrop-blur-3xl {
-    backdrop-filter: blur(64px);
-  }
-  
-  .glass-morphism {
+  /* Glass Morphism Effects */
+  .glass-card {
     background: rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   }
   
-  .gradient-text {
-    @apply bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400 bg-clip-text text-transparent;
+  .glass-card-strong {
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(25px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  }
+  
+  /* Gradient Backgrounds */
+  .bg-romantic {
+    background: linear-gradient(135deg, #FF6B9D, #FF8E8E);
+  }
+  
+  .bg-modern {
+    background: linear-gradient(135deg, #667EEA, #764BA2);
+  }
+  
+  .bg-fresh {
+    background: linear-gradient(135deg, #4ECDC4, #44A08D);
+  }
+  
+  .bg-warm {
+    background: linear-gradient(135deg, #FF7F7F, #FFA07A);
+  }
+  
+  /* Text Gradients */
+  .text-gradient-romantic {
+    background: linear-gradient(135deg, #FF6B9D, #FF8E8E);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .text-gradient-modern {
+    background: linear-gradient(135deg, #667EEA, #764BA2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .text-gradient-fresh {
+    background: linear-gradient(135deg, #4ECDC4, #44A08D);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  /* Enhanced Shadows */
+  .shadow-romantic {
+    box-shadow: 0 8px 32px rgba(255, 107, 157, 0.3);
+  }
+  
+  .shadow-modern {
+    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+  }
+  
+  .shadow-fresh {
+    box-shadow: 0 8px 32px rgba(78, 205, 196, 0.3);
+  }
+  
+  .shadow-glow {
+    box-shadow: 0 0 20px rgba(255, 107, 157, 0.4);
+  }
+  
+  /* Button Styles */
+  .btn-romantic {
+    background: linear-gradient(135deg, #FF6B9D, #FF8E8E);
+    box-shadow: 0 4px 15px rgba(255, 107, 157, 0.4);
+    transition: all 0.3s ease;
+  }
+  
+  .btn-romantic:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 107, 157, 0.6);
+  }
+  
+  .btn-modern {
+    background: linear-gradient(135deg, #667EEA, #764BA2);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    transition: all 0.3s ease;
+  }
+  
+  .btn-modern:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+  }
+  
+  /* Animated Gradients */
+  .animated-gradient {
+    background: linear-gradient(-45deg, #FF6B9D, #667EEA, #4ECDC4, #FFD700);
+    background-size: 400% 400%;
+    animation: gradientShift 8s ease infinite;
+  }
+  
+  @keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  
+  /* Floating Animation */
+  .float {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+  }
+  
+  /* Pulse Animation */
+  .pulse-glow {
+    animation: pulseGlow 2s ease-in-out infinite alternate;
+  }
+  
+  @keyframes pulseGlow {
+    from { box-shadow: 0 0 20px rgba(255, 107, 157, 0.4); }
+    to { box-shadow: 0 0 30px rgba(255, 107, 157, 0.8); }
   }
 }
 
@@ -89,13 +201,13 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, rgba(168, 85, 247, 0.6), rgba(236, 72, 153, 0.6));
+  background: linear-gradient(135deg, #FF6B9D, #667EEA);
   border-radius: 4px;
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, rgba(168, 85, 247, 0.8), rgba(236, 72, 153, 0.8));
+  background: linear-gradient(135deg, #FF8E8E, #764BA2);
 }
 
 ::-webkit-scrollbar-corner {
@@ -114,9 +226,9 @@ button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  outline: 2px solid rgba(168, 85, 247, 0.6);
+  outline: 2px solid #FF6B9D;
   outline-offset: 2px;
-  box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.1);
+  box-shadow: 0 0 0 4px rgba(255, 107, 157, 0.1);
 }
 
 /* Loading animation */
@@ -152,7 +264,7 @@ input, textarea, select {
 }
 
 input:focus, textarea:focus, select:focus {
-  @apply ring-2 ring-purple-500/50 border-purple-400/50;
+  @apply ring-2 ring-pink-500/50 border-pink-400/50;
 }
 
 /* Button improvements */
@@ -171,7 +283,7 @@ button:disabled {
 
 /* Text selection */
 ::selection {
-  background: rgba(168, 85, 247, 0.3);
+  background: rgba(255, 107, 157, 0.3);
   color: white;
 }
 
@@ -201,8 +313,34 @@ button:disabled {
 
 /* High contrast mode */
 @media (prefers-contrast: high) {
-  .glass-morphism {
+  .glass-card {
     background: rgba(0, 0, 0, 0.8);
     border: 2px solid rgba(255, 255, 255, 0.8);
+  }
+}
+
+/* Custom color variables for Tailwind */
+@layer base {
+  :root {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 84% 4.9%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 94.1%;
+    --radius: 0.75rem;
   }
 }

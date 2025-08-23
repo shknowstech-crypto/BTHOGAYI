@@ -9,18 +9,19 @@ export function HeroSection() {
   const navigate = useNavigate()
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900">
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Enhanced Animated Background */}
+      <div className="absolute inset-0 animated-gradient opacity-20" />
       <div className="absolute inset-0">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(120,119,198,0.15),transparent_70%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(255,119,198,0.15),transparent_70%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(120,219,255,0.15),transparent_70%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,107,157,0.15),transparent_70%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(102,126,234,0.15),transparent_70%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(78,205,196,0.15),transparent_70%)]" />
         
         {/* Enhanced Floating Elements */}
         {Array.from({ length: 30 }).map((_, i) => (
           <motion.div
             key={i}
-            className="absolute w-2 h-2 bg-white/20 rounded-full"
+            className="absolute w-2 h-2 bg-gradient-to-r from-pink-400 to-purple-400 rounded-full opacity-60"
             style={{
               left: `${Math.random() * 100}%`,
               top: `${Math.random() * 100}%`,
@@ -49,7 +50,7 @@ export function HeroSection() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
-                className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-sm border border-white/20 rounded-full mb-8"
+                className="inline-flex items-center px-4 py-2 glass-card-strong rounded-full mb-8"
               >
                 <Sparkles className="w-4 h-4 text-yellow-400 mr-2" />
                 <span className="text-white/90 text-sm font-medium">Exclusive to BITS Students</span>
@@ -69,7 +70,7 @@ export function HeroSection() {
               >
                 Find Your Perfect{' '}
                 <motion.span 
-                  className="bg-gradient-to-r from-pink-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent"
+                  className="text-gradient-romantic"
                   animate={{ 
                     backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
                   }}
@@ -107,30 +108,30 @@ export function HeroSection() {
                   className="text-center"
                   whileHover={{ scale: 1.05 }}
                 >
-                  <div className="text-3xl font-bold text-white">1000+</div>
+                  <div className="text-3xl font-bold text-gradient-romantic">1000+</div>
                   <div className="text-white/60 text-sm">Active Students</div>
                 </motion.div>
                 <motion.div 
                   className="text-center"
                   whileHover={{ scale: 1.05 }}
                 >
-                  <div className="text-3xl font-bold text-pink-400">500+</div>
+                  <div className="text-3xl font-bold text-gradient-modern">500+</div>
                   <div className="text-white/60 text-sm">Successful Matches</div>
                 </motion.div>
                 <motion.div 
                   className="text-center"
                   whileHover={{ scale: 1.05 }}
                 >
-                  <div className="text-3xl font-bold text-purple-400">4</div>
+                  <div className="text-3xl font-bold text-gradient-fresh">4</div>
                   <div className="text-white/60 text-sm">BITS Campuses</div>
                 </motion.div>
                 <motion.div 
                   className="text-center"
                   whileHover={{ scale: 1.05 }}
                 >
-                  <div className="text-3xl font-bold text-cyan-400">24/7</div>
+                  <div className="text-3xl font-bold text-yellow-400">24/7</div>
                   <div className="text-white/60 text-sm">Safe & Secure</div>
-                </motion.div>
+                </div>
               </motion.div>
 
               {/* Enhanced CTA Buttons */}
@@ -142,9 +143,9 @@ export function HeroSection() {
               >
                 <GradientButton
                   size="lg"
-                  variant="primary"
+                  variant="romantic"
                   onClick={() => navigate('/auth')}
-                  className="group shadow-2xl"
+                  className="group shadow-2xl pulse-glow"
                 >
                   Start Swiping Now! 💖
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -159,7 +160,7 @@ export function HeroSection() {
                   whileTap={{ scale: 0.98 }}
                 >
                   <motion.div 
-                    className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors backdrop-blur-sm border border-white/20"
+                    className="w-12 h-12 glass-card hover:bg-white/20 rounded-full flex items-center justify-center transition-colors backdrop-blur-sm border border-white/20"
                     whileHover={{ scale: 1.1 }}
                   >
                     <Play className="w-5 h-5 ml-1" />
@@ -176,15 +177,15 @@ export function HeroSection() {
                 className="mt-8 flex flex-wrap justify-center lg:justify-start gap-6 text-white/60 text-sm"
               >
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                  <div className="w-2 h-2 bg-green-400 rounded-full pulse-glow"></div>
                   <span>100% Verified BITS Students</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                  <div className="w-2 h-2 bg-blue-400 rounded-full pulse-glow"></div>
                   <span>AI-Powered Smart Matching</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+                  <div className="w-2 h-2 bg-purple-400 rounded-full pulse-glow"></div>
                   <span>Safe & Private Dating</span>
                 </div>
               </motion.div>
@@ -197,14 +198,14 @@ export function HeroSection() {
               transition={{ duration: 1, delay: 0.5 }}
               className="relative"
             >
-              <div className="relative mx-auto w-80 h-[600px]">
+              <div className="relative mx-auto w-80 h-[600px] float">
                 {/* Enhanced Phone Frame */}
                 <motion.div 
                   className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 rounded-[3rem] p-2 shadow-2xl"
                   whileHover={{ scale: 1.02 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-pink-500 rounded-[2.5rem] p-1">
+                  <div className="w-full h-full bg-romantic rounded-[2.5rem] p-1">
                     <div className="w-full h-full bg-black rounded-[2rem] overflow-hidden">
                       {/* Enhanced App Content */}
                       <div className="p-6 h-full flex flex-col">
@@ -220,7 +221,7 @@ export function HeroSection() {
                             <span className="text-white font-bold">BITSPARK</span>
                           </div>
                           <motion.div 
-                            className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"
+                            className="w-8 h-8 bg-romantic rounded-full"
                             animate={{ scale: [1, 1.1, 1] }}
                             transition={{ duration: 2, repeat: Infinity }}
                           />
@@ -229,7 +230,7 @@ export function HeroSection() {
                         {/* Enhanced Features Grid */}
                         <div className="grid grid-cols-2 gap-4 flex-1">
                           <motion.div 
-                            className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-2xl p-4 border border-white/10"
+                            className="glass-card rounded-2xl p-4 border border-blue-500/20"
                             whileHover={{ scale: 1.05 }}
                             animate={{ y: [0, -2, 0] }}
                             transition={{ duration: 3, repeat: Infinity, delay: 0 }}
@@ -240,7 +241,7 @@ export function HeroSection() {
                           </motion.div>
                           
                           <motion.div 
-                            className="bg-gradient-to-br from-pink-500/20 to-rose-500/20 rounded-2xl p-4 border border-white/10"
+                            className="glass-card rounded-2xl p-4 border border-pink-500/20"
                             whileHover={{ scale: 1.05 }}
                             animate={{ y: [0, -2, 0] }}
                             transition={{ duration: 3, repeat: Infinity, delay: 0.5 }}
@@ -251,7 +252,7 @@ export function HeroSection() {
                           </motion.div>
                           
                           <motion.div 
-                            className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-2xl p-4 border border-white/10"
+                            className="glass-card rounded-2xl p-4 border border-purple-500/20"
                             whileHover={{ scale: 1.05 }}
                             animate={{ y: [0, -2, 0] }}
                             transition={{ duration: 3, repeat: Infinity, delay: 1 }}
@@ -262,7 +263,7 @@ export function HeroSection() {
                           </motion.div>
                           
                           <motion.div 
-                            className="bg-gradient-to-br from-indigo-500/20 to-cyan-500/20 rounded-2xl p-4 border border-white/10"
+                            className="glass-card rounded-2xl p-4 border border-cyan-500/20"
                             whileHover={{ scale: 1.05 }}
                             animate={{ y: [0, -2, 0] }}
                             transition={{ duration: 3, repeat: Infinity, delay: 1.5 }}
@@ -276,16 +277,8 @@ export function HeroSection() {
                         {/* Enhanced Bottom CTA */}
                         <div className="mt-6">
                           <motion.div 
-                            className="bg-gradient-to-r from-pink-500 to-purple-500 rounded-xl p-3 text-center"
+                            className="bg-romantic rounded-xl p-3 text-center pulse-glow"
                             whileHover={{ scale: 1.02 }}
-                            animate={{ 
-                              boxShadow: [
-                                '0 0 20px rgba(236, 72, 153, 0.3)',
-                                '0 0 30px rgba(168, 85, 247, 0.4)',
-                                '0 0 20px rgba(236, 72, 153, 0.3)'
-                              ]
-                            }}
-                            transition={{ duration: 2, repeat: Infinity }}
                           >
                             <div className="text-white font-medium text-sm">Join Now - It's Free!</div>
                           </motion.div>
@@ -303,7 +296,7 @@ export function HeroSection() {
                     scale: [1, 1.05, 1]
                   }}
                   transition={{ duration: 4, repeat: Infinity }}
-                  className="absolute -top-4 -right-4 w-16 h-16 bg-gradient-to-r from-pink-500 to-rose-500 rounded-2xl flex items-center justify-center shadow-2xl"
+                  className="absolute -top-4 -right-4 w-16 h-16 bg-romantic rounded-2xl flex items-center justify-center shadow-romantic"
                 >
                   <Heart className="w-8 h-8 text-white" />
                 </motion.div>
@@ -315,7 +308,7 @@ export function HeroSection() {
                     scale: [1, 1.05, 1]
                   }}
                   transition={{ duration: 5, repeat: Infinity, delay: 1 }}
-                  className="absolute -bottom-4 -left-4 w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-2xl"
+                  className="absolute -bottom-4 -left-4 w-16 h-16 bg-modern rounded-2xl flex items-center justify-center shadow-modern"
                 >
                   <Users className="w-8 h-8 text-white" />
                 </motion.div>
@@ -326,7 +319,7 @@ export function HeroSection() {
                     scale: [1, 1.1, 1]
                   }}
                   transition={{ duration: 3, repeat: Infinity, delay: 2 }}
-                  className="absolute top-1/2 -left-6 w-12 h-12 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full flex items-center justify-center shadow-xl"
+                  className="absolute top-1/2 -left-6 w-12 h-12 bg-fresh rounded-full flex items-center justify-center shadow-fresh"
                 >
                   <Sparkles className="w-6 h-6 text-white" />
                 </motion.div>
@@ -346,7 +339,7 @@ export function HeroSection() {
         <motion.div
           animate={{ y: [0, 8, 0] }}
           transition={{ duration: 2, repeat: Infinity }}
-          className="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center cursor-pointer hover:border-white/50 transition-colors"
+          className="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center cursor-pointer hover:border-pink-400/50 transition-colors"
           onClick={() => {
             document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })
           }}
@@ -354,7 +347,7 @@ export function HeroSection() {
           <motion.div
             animate={{ y: [0, 12, 0] }}
             transition={{ duration: 2, repeat: Infinity }}
-            className="w-1 h-3 bg-white/60 rounded-full mt-2"
+            className="w-1 h-3 bg-gradient-to-b from-pink-400 to-purple-400 rounded-full mt-2"
           />
         </motion.div>
       </motion.div>

@@ -9,7 +9,7 @@ interface GlassCardProps {
   className?: string
   hover?: boolean
   onClick?: () => void
-  variant?: 'default' | 'subtle' | 'strong'
+  variant?: 'default' | 'subtle' | 'strong' | 'romantic' | 'modern'
 }
 
 export function GlassCard({ 
@@ -22,17 +22,19 @@ export function GlassCard({
   const Component = onClick ? motion.div : 'div'
   
   const variantClasses = {
-    default: 'backdrop-blur-xl bg-white/10 border border-white/20',
+    default: 'glass-card',
     subtle: 'backdrop-blur-lg bg-white/5 border border-white/10',
-    strong: 'backdrop-blur-2xl bg-white/15 border border-white/30'
+    strong: 'glass-card-strong',
+    romantic: 'backdrop-blur-xl bg-gradient-to-br from-pink-500/10 to-purple-500/10 border border-pink-500/20 shadow-romantic',
+    modern: 'backdrop-blur-xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-blue-500/20 shadow-modern'
   }
 
   return (
     <Component
       className={cn(
-        'rounded-2xl shadow-2xl transition-all duration-300',
+        'rounded-2xl transition-all duration-300',
         variantClasses[variant],
-        hover && 'hover:bg-white/15 hover:border-white/30 hover:shadow-3xl cursor-pointer',
+        hover && 'hover:bg-white/15 hover:border-white/30 hover:shadow-glow cursor-pointer hover:-translate-y-1',
         className
       )}
       onClick={onClick}

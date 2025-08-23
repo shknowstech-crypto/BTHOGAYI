@@ -1,38 +1,12 @@
-import { createSupabaseClient } from './supabase'
-import { UserProfile } from './supabase'
-
-export class AuthService {
-  // BITS email validation - now supports all BITS domains
-  static validateBitsEmail(email: string): boolean {
-    const bitsEmailRegex = /^[a-zA-Z0-9._%+-]+@(pilani\.bits-pilani\.ac\.in|goa\.bits-pilani\.ac\.in|hyderabad\.bits-pilani\.ac\.in|dubai\.bits-pilani\.ac\.in)$/
-    return bitsEmailRegex.test(email)
-  }
-
-  // Extract campus from email domain
-  static getCampusFromEmail(email: string): 'Pilani' | 'Goa' | 'Hyderabad' | 'Dubai' {
-    if (email.includes('goa.bits-pilani.ac.in')) return 'Goa'
-    if (email.includes('hyderabad.bits-pilani.ac.in')) return 'Hyderabad'
-    if (email.includes('dubai.bits-pilani.ac.in')) return 'Dubai'
-    return 'Pilani' // Default to Pilani
-  }
-
-  // Sign in with Google OAuth
-  static async signInWithGoogle() {
-    const supabase = createSupabaseClient()
     
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent',
-        },
-      },
-    })
-
-    if (error) throw error
-    return data
+    const supabase = createSupabaseClient()
+      profile.bio &&
+      profile.interests.length > 0 &&
+      profile.year &&
+      profile.branch &&
+      profile.age &&
+      profile.gender
+    )
   }
 
   // Sign out

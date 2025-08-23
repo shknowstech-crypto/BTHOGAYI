@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { createSupabaseClient } from './supabase'
 import { UserProfile } from './supabase'
 
 export class AuthService {
@@ -121,6 +121,7 @@ export class AuthService {
 
   // Get current user
   static async getCurrentUser() {
+    const supabase = createSupabaseClient()
     const { data: { user }, error } = await supabase.auth.getUser()
     if (error) throw error
     return user
@@ -128,6 +129,7 @@ export class AuthService {
 
   // Get user profile
   static async getUserProfile(userId: string): Promise<UserProfile | null> {
+    const supabase = createSupabaseClient()
     const { data, error } = await supabase
       .from('users')
       .select('*')
@@ -144,6 +146,8 @@ export class AuthService {
 
   // Update user profile
   static async updateUserProfile(userId: string, updates: Partial<UserProfile>) {
+    const supabase = createSupabaseClient()
+    
     // Add updated timestamp
     const updatesWithTimestamp = {
       ...updates,
@@ -163,6 +167,8 @@ export class AuthService {
 
   // Sign in with Google OAuth
   static async signInWithGoogle() {
+    const supabase = createSupabaseClient()
+    
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -178,3 +184,6 @@ export class AuthService {
     return data
   }
 }
+    const supabase = createSupabaseClient()
+    const supabase = createSupabaseClient()
+    

@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL!
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!
@@ -7,6 +7,22 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables')
 }
 
+// Create a function to get a fresh client instance
+export const createSupabaseClient = (): SupabaseClient => {
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+    },
+    realtime: {
+      params: {
+        eventsPerSecond: 10,
+      },
+    },
+  })
+}
+
+// Export default client instance
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
@@ -22,31 +38,27 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 // Database types
 export interface UserProfile {
   id: string
-  bits_email: string
-  student_id: string
+  email: string
   display_name: string
   username: string
   profile_photo?: string
   bio?: string
   age?: number
   gender?: 'male' | 'female' | 'other'
+  age?: number
+  gender?: 'male' | 'female' | 'other'
   year: number
-  branch: string
-  campus: 'Pilani' | 'Goa' | 'Hyderabad' | 'Dubai'
   preferences: {
     connect_similarity: 1 | -1
     dating_similarity: 1 | -1
     gender_preference?: 'male' | 'female' | 'any'
     age_range: [number, number]
-    max_distance?: number
+    looking_for: ('friends' | 'dating' | 'networking')[]
   }
-  email_verified: boolean
-  student_id_verified: boolean
-  photo_verified: boolean
-  verified: boolean
   is_active: boolean
+  profile_completed: boolean
   last_seen: string
-  streak_count: number
+  streak_count?: number
   created_at: string
   updated_at: string
 }

@@ -1,12 +1,13 @@
-import { UserProfile } from './supabase'
+import { createSupabaseClient } from './supabase'
+import { LocalRecommendationEngine } from './local-recommendations'
 
-// API Configuration
-const RECOMMENDATION_API_URL = import.meta.env.VITE_RECOMMENDATION_API_URL || 'http://localhost:8000'
-const API_KEY = import.meta.env.VITE_RECOMMENDATION_API_KEY
+// Secure API Configuration
+const RECOMMENDATION_API_URL = import.meta.env.VITE_RECOMMENDATION_API_URL
+const USE_LOCAL_FALLBACK = !RECOMMENDATION_API_URL
 
-interface RecommendationRequest {
+export interface RecommendationRequest {
   user_id: string
-  recommendation_type: 'friends' | 'dating' | 'daily_match' | 'similar' | 'opposite'
+  recommendation_type: 'friends' | 'dating' | 'daily_match'
   limit?: number
   filters?: {
     exclude_user_ids?: string[]
@@ -17,7 +18,7 @@ interface RecommendationRequest {
   }
 }
 
-interface RecommendationItem {
+export interface RecommendationItem {
   user_id: string
   compatibility_score: number
   match_reasons: string[]
@@ -28,7 +29,7 @@ interface RecommendationItem {
   confidence: number
 }
 
-interface RecommendationResponse {
+export interface RecommendationResponse {
   user_id: string
   recommendations: RecommendationItem[]
   algorithm_version: string
@@ -37,47 +38,66 @@ interface RecommendationResponse {
   fallback_used: boolean
 }
 
-class RecommendationAPI {
-  private baseUrl: string
-  private apiKey: string
-  private isServerAvailable: boolean = true
+export interface UserFeedback {
+  user_id: string
+  target_user_id: string
+  action: 'like' | 'pass' | 'super_like' | 'block' | 'report'
+  context?: Record<string, any>
+}
+
+class RecommendationAPIClient {
+  private baseURL: string
+  private supabase = createSupabaseClient()
+  private localEngine = new LocalRecommendationEngine()
+  private isServerAvailable: boolean = false
 
   constructor() {
-    this.baseUrl = RECOMMENDATION_API_URL
-    this.apiKey = API_KEY || ''
-    
-    // Check server availability on initialization
+    this.baseURL = RECOMMENDATION_API_URL || ''
     this.checkServerHealth()
   }
 
+  private async getAuthToken(): Promise<string> {
+    const { data: { session } } = await this.supabase.auth.getSession()
+    if (!session?.access_token) {
+      throw new Error('No authentication token available')
+    }
+    return session.access_token
+  }
+
   private async checkServerHealth(): Promise<boolean> {
+    if (!this.baseURL) {
+      this.isServerAvailable = false
+      return false
+    }
+
     try {
-      const response = await fetch(`${this.baseUrl}/health`, {
+      const response = await fetch(`${this.baseURL}/health`, {
         method: 'GET',
-        timeout: 5000
-      } as any)
+        signal: AbortSignal.timeout(5000)
+      })
       
       this.isServerAvailable = response.ok
       return response.ok
     } catch (error) {
-      console.warn('Recommendation server unavailable, falling back to local algorithm')
+      console.warn('Recommendation server unavailable, using local algorithm')
       this.isServerAvailable = false
       return false
     }
   }
 
-  private async makeRequest<T>(endpoint: string, data: any): Promise<T> {
-    if (!this.apiKey) {
-      throw new Error('Recommendation API key not configured')
-    }
-
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      method: 'POST',
+  private async makeSecureRequest<T>(
+    endpoint: string, 
+    options: RequestInit = {}
+  ): Promise<T> {
+    const token = await this.getAuthToken()
+    
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      ...options,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`,
+        'Authorization': `Bearer ${token}`,
+        ...options.headers,
       },
-      body: JSON.stringify(data),
     })
 
     if (!response.ok) {
@@ -89,94 +109,113 @@ class RecommendationAPI {
   }
 
   async getRecommendations(request: RecommendationRequest): Promise<RecommendationResponse> {
-    try {
-      // First check if server is available
-      const serverHealthy = await this.checkServerHealth()
-      
-      if (!serverHealthy || !this.isServerAvailable) {
-        // Fall back to local algorithm
-        return this.getLocalRecommendations(request)
+    // Always use local algorithm for now (more secure)
+    if (USE_LOCAL_FALLBACK || !this.isServerAvailable) {
+      const recommendations = await this.localEngine.getRecommendations(request)
+      return {
+        user_id: request.user_id,
+        recommendations,
+        algorithm_version: 'local-1.0',
+        generated_at: new Date().toISOString(),
+        total_candidates: recommendations.length,
+        fallback_used: true
       }
+    }
 
-      // Try server-side recommendations
-      const response = await this.makeRequest<RecommendationResponse>(
-        '/api/v1/recommendations',
-        request
-      )
-
-      response.fallback_used = false
-      return response
-
+    try {
+      return await this.makeSecureRequest<RecommendationResponse>('/api/v1/recommendations', {
+        method: 'POST',
+        body: JSON.stringify(request),
+      })
     } catch (error) {
       console.warn('Server recommendation failed, using local algorithm:', error)
-      this.isServerAvailable = false
-      
-      // Fall back to local algorithm
-      return this.getLocalRecommendations(request)
+      const recommendations = await this.localEngine.getRecommendations(request)
+      return {
+        user_id: request.user_id,
+        recommendations,
+        algorithm_version: 'local-1.0',
+        generated_at: new Date().toISOString(),
+        total_candidates: recommendations.length,
+        fallback_used: true
+      }
     }
   }
 
-  private async getLocalRecommendations(request: RecommendationRequest): Promise<RecommendationResponse> {
-    // Import local recommendation logic
-    const { LocalRecommendationEngine } = await import('./local-recommendations')
-    const localEngine = new LocalRecommendationEngine()
-    
-    const recommendations = await localEngine.getRecommendations(request)
-    
-    return {
-      user_id: request.user_id,
-      recommendations,
-      algorithm_version: 'local-1.0',
-      generated_at: new Date().toISOString(),
-      total_candidates: recommendations.length,
-      fallback_used: true
-    }
-  }
-
-  async submitFeedback(
-    userId: string, 
-    targetUserId: string, 
-    action: 'like' | 'pass' | 'super_like' | 'block'
-  ): Promise<void> {
+  async submitFeedback(feedback: UserFeedback): Promise<{ status: string; message: string }> {
+    // Store feedback locally in Supabase
     try {
-      if (!this.isServerAvailable) return // Skip if server unavailable
-      
-      await this.makeRequest('/api/v1/feedback', {
-        user_id: userId,
-        target_user_id: targetUserId,
-        action
-      })
-    } catch (error) {
-      console.warn('Failed to submit feedback:', error)
-      // Don't throw error - feedback is not critical
-    }
-  }
+      await this.supabase
+        .from('user_feedback')
+        .insert({
+          user_id: feedback.user_id,
+          target_user_id: feedback.target_user_id,
+          action: feedback.action,
+          context: feedback.context || {},
+          created_at: new Date().toISOString()
+        })
 
-  async getUserStats(userId: string): Promise<any> {
-    try {
-      if (!this.isServerAvailable) return {}
-      
-      const response = await fetch(`${this.baseUrl}/api/v1/stats/${userId}`, {
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-        },
-      })
-
-      if (!response.ok) return {}
-      return response.json()
+      return { status: 'success', message: 'Feedback recorded' }
     } catch (error) {
-      console.warn('Failed to get user stats:', error)
-      return {}
+      console.error('Failed to record feedback:', error)
+      return { status: 'error', message: 'Failed to record feedback' }
     }
   }
 
   getServerStatus(): { available: boolean; usingFallback: boolean } {
     return {
       available: this.isServerAvailable,
-      usingFallback: !this.isServerAvailable
+      usingFallback: !this.isServerAvailable || USE_LOCAL_FALLBACK
     }
   }
 }
 
-export const recommendationAPI = new RecommendationAPI()
-export type { RecommendationRequest, RecommendationResponse, RecommendationItem }
+export const recommendationAPI = new RecommendationAPIClient()
+
+// Hook for recommendations
+export function useRecommendations() {
+  const getRecommendations = async (
+    userId: string,
+    type: 'friends' | 'dating' | 'daily_match' = 'friends',
+    limit: number = 10
+  ) => {
+    try {
+      const response = await recommendationAPI.getRecommendations({
+        user_id: userId,
+        recommendation_type: type,
+        limit,
+        filters: {
+          verified_only: true,
+          active_recently: true
+        }
+      })
+      return response.recommendations
+    } catch (error) {
+      console.error('Failed to get recommendations:', error)
+      throw error
+    }
+  }
+
+  const submitFeedback = async (
+    userId: string,
+    targetUserId: string,
+    action: UserFeedback['action'],
+    context?: Record<string, any>
+  ) => {
+    try {
+      await recommendationAPI.submitFeedback({
+        user_id: userId,
+        target_user_id: targetUserId,
+        action,
+        context
+      })
+    } catch (error) {
+      console.error('Failed to submit feedback:', error)
+      throw error
+    }
+  }
+
+  return {
+    getRecommendations,
+    submitFeedback
+  }
+}

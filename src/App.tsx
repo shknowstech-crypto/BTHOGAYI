@@ -2,7 +2,6 @@ import { Routes, Route } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useAuthStore } from './lib/store'
 import { AuthService } from './lib/auth'
-import { ServerStatusIndicator } from './components/ui/server-status-indicator'
 
 // Pages
 import HomePage from './pages/HomePage'
@@ -15,29 +14,24 @@ import ShippingPage from './pages/ShippingPage'
 import DailyMatchPage from './pages/DailyMatchPage'
 import SettingsPage from './pages/SettingsPage'
 import ProfilePage from './pages/ProfilePage'
+import OnboardingPage from './pages/OnboardingPage'
+import AuthCallbackPage from './pages/AuthCallbackPage'
 
 function App() {
-  const { setUser, setLoading } = useAuthStore()
+  const { setLoading } = useAuthStore()
 
   useEffect(() => {
-    const initAuth = async () => {
-      try {
-        setLoading(false) // Temporarily disable auth for testing
-      } catch (error) {
-        console.error('Auth initialization error:', error)
-        setLoading(false)
-      }
-    }
-
-    initAuth()
+    // Initialize auth state
+    setLoading(false)
   }, [setLoading])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
-      <ServerStatusIndicator />
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/auth" element={<AuthPage />} />
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
+        <Route path="/onboarding" element={<OnboardingPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/connect" element={<ConnectPage />} />
         <Route path="/dating" element={<DatingPage />} />

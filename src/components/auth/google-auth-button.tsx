@@ -1,20 +1,25 @@
-import React, { useState } from 'react'
+'use client'
+
+import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { GradientButton } from '../path/to/GradientButton'
-import { AuthService } from '../path/to/AuthService'
+import { AuthService } from '@/lib/auth'
+import { GradientButton } from '@/components/ui/gradient-button'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { Shield, Sparkles } from 'lucide-react'
 
 interface GoogleAuthButtonProps {
-  onError?: (message: string) => void
+  onError?: (error: string) => void
+  onSuccess?: (message: string) => void
 }
 
-export function GoogleAuthButton({ onError }: GoogleAuthButtonProps) {
+export function GoogleAuthButton({ onError, onSuccess }: GoogleAuthButtonProps) {
   const [isLoading, setIsLoading] = useState(false)
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true)
     try {
       await AuthService.signInWithGoogle()
-      // Success message handled by auth state change
+      onSuccess?.('Redirecting to Google for secure authentication...')
     } catch (error: any) {
       console.error('Google sign in failed:', error)
       onError?.(error.message || 'Failed to sign in with Google. Please try again.')
@@ -28,13 +33,15 @@ export function GoogleAuthButton({ onError }: GoogleAuthButtonProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, delay: 0.2 }}
+      className="space-y-4"
     >
+      {/* Primary Google Auth Button */}
       <GradientButton
         size="lg"
-        variant="secondary"
+        variant="romantic"
         onClick={handleGoogleSignIn}
         disabled={isLoading}
-        className="w-full flex items-center justify-center gap-3 hover:scale-105 transition-transform"
+        className="w-full flex items-center justify-center gap-3 hover:scale-105 transition-transform shadow-2xl"
       >
         {isLoading ? (
           <motion.div
@@ -43,7 +50,7 @@ export function GoogleAuthButton({ onError }: GoogleAuthButtonProps) {
             className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full"
           />
         ) : (
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path
               fill="currentColor"
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -64,10 +71,58 @@ export function GoogleAuthButton({ onError }: GoogleAuthButtonProps) {
         )}
         {isLoading ? 'Connecting to Google...' : 'Continue with Google'}
       </GradientButton>
+      
+      {/* Security Info */}
+      <div className="text-center space-y-2">
+        <p className="text-white/60 text-sm flex items-center justify-center gap-2">
+          <Shield className="w-4 h-4 text-green-400" />
+          🎓 Use your BITS email to join the exclusive community
+        </p>
+        <div className="flex items-center justify-center gap-4 text-white/50 text-xs">
+          <div className="flex items-center gap-1">
+            <Sparkles className="w-3 h-3 text-blue-400" />
+            <span>JWT Secured</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Sparkles className="w-3 h-3 text-purple-400" />
+            <span>OAuth 2.0</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Sparkles className="w-3 h-3 text-pink-400" />
+            <span>BITS Verified</span>
+          </div>
+        </div>
+      </div>
 
-      <p className="text-center text-white/60 text-sm mt-4">
-        🎓 Use your BITS email to join the exclusive community
-      </p>
+      {/* Authentication Flow Info */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.4 }}
+        className="mt-6 p-4 bg-white/5 rounded-xl"
+      >
+        <h4 className="text-white/80 font-medium text-sm mb-2 text-center">
+          🔐 Secure Authentication Flow:
+        </h4>
+        <div className="space-y-1 text-white/60 text-xs">
+          <div className="flex items-center justify-between">
+            <span>1. Google OAuth</span>
+            <span className="text-green-400">✓ Secure</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span>2. BITS Email Check</span>
+            <span className="text-blue-400">✓ Verified</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span>3. JWT Token</span>
+            <span className="text-purple-400">✓ Generated</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span>4. Database Sync</span>
+            <span className="text-pink-400">✓ Synced</span>
+          </div>
+        </div>
+      </motion.div>
     </motion.div>
   )
 }

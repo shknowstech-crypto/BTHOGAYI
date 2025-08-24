@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { createSupabaseClient } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import { AuthService } from '@/lib/auth'
 import { useAuthStore } from '@/lib/store'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { motion } from 'framer-motion'
+import { Shield, Database, CheckCircle } from 'lucide-react'
 
 interface AuthGuardProps {
   children: React.ReactNode
@@ -22,12 +24,14 @@ export function AuthGuard({
 }: AuthGuardProps) {
   const { user, isAuthenticated, setUser, setLoading, logout } = useAuthStore()
   const [isChecking, setIsChecking] = useState(true)
+  const [authStep, setAuthStep] = useState('Checking authentication...')
   const navigate = useNavigate()
-  const supabase = createSupabaseClient()
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        setAuthStep('Verifying session...')
+        
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
         if (sessionError) {
@@ -40,6 +44,8 @@ export function AuthGuard({
         }
         
         if (session?.user) {
+          setAuthStep('Validating BITS email...')
+          
           // Validate BITS email
           if (!AuthService.validateBitsEmail(session.user.email!)) {
             await AuthService.signOut()
@@ -48,10 +54,13 @@ export function AuthGuard({
             return
           }
 
+          setAuthStep('Loading profile...')
+          
           // Get or create user profile
           let profile = await AuthService.getUserProfile(session.user.id)
           
           if (!profile) {
+            setAuthStep('Creating profile...')
             try {
               profile = await AuthService.createUserProfile(session.user)
             } catch (createError: any) {
@@ -63,10 +72,16 @@ export function AuthGuard({
             }
           }
 
+          setAuthStep('Syncing with services...')
+          
+          // Sync with recommendation engine
+          await AuthService.syncWithRecommendationEngine(session.user.id)
+
           setUser(profile)
 
           // Check if profile completion is required
           if (requireCompleteProfile && !AuthService.isProfileComplete(profile)) {
+            setAuthStep('Redirecting to onboarding...')
             navigate('/onboarding')
             return
           }
@@ -113,6 +128,10 @@ export function AuthGuard({
           const profile = await AuthService.getUserProfile(session.user.id)
           if (profile) {
             setUser(profile)
+            
+            // Sync with recommendation engine
+            await AuthService.syncWithRecommendationEngine(session.user.id)
+            
             // Check if profile needs completion
             if (requireCompleteProfile && !AuthService.isProfileComplete(profile)) {
               navigate('/onboarding')
@@ -132,6 +151,11 @@ export function AuthGuard({
               navigate('/auth?error=profile-creation-failed')
             }
           }
+        } else if (event === 'TOKEN_REFRESHED') {
+          // Token was refreshed, sync with recommendation engine
+          if (session?.user?.id) {
+            await AuthService.syncWithRecommendationEngine(session.user.id)
+          }
         }
       }
     )
@@ -142,10 +166,45 @@ export function AuthGuard({
   if (isChecking) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900 flex items-center justify-center">
-        <div className="text-center">
-          <LoadingSpinner size="lg" className="mx-auto mb-4" />
-          <p className="text-white/70">Loading BITSPARK...</p>
-        </div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center max-w-md w-full"
+        >
+          <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-8">
+            {/* Logo */}
+            <motion.div
+              animate={{ rotate: [0, 10, -10, 0] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="w-16 h-16 bg-gradient-to-r from-pink-500 to-purple-500 rounded-2xl flex items-center justify-center mx-auto mb-6"
+            >
+              <Shield className="w-8 h-8 text-white" />
+            </motion.div>
+
+            <h2 className="text-2xl font-bold text-white mb-2">
+              Authenticating...
+            </h2>
+            <p className="text-white/70 mb-8">{authStep}</p>
+
+            {/* Auth Steps */}
+            <div className="space-y-3 mb-8">
+              <div className="flex items-center gap-3 text-white/60 text-sm">
+                <CheckCircle className="w-4 h-4 text-green-400" />
+                <span>Google OAuth verification</span>
+              </div>
+              <div className="flex items-center gap-3 text-white/60 text-sm">
+                <CheckCircle className="w-4 h-4 text-blue-400" />
+                <span>BITS email validation</span>
+              </div>
+              <div className="flex items-center gap-3 text-white/60 text-sm">
+                <Database className="w-4 h-4 text-purple-400" />
+                <span>Database synchronization</span>
+              </div>
+            </div>
+
+            <LoadingSpinner size="lg" className="mx-auto" />
+          </div>
+        </motion.div>
       </div>
     )
   }

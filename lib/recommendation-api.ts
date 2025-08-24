@@ -1,4 +1,4 @@
-import { createSupabaseClient } from './supabase'
+import { supabase } from './supabase'
 
 export interface RecommendationRequest {
   user_id: string
@@ -40,12 +40,13 @@ export interface UserFeedback {
   context?: Record<string, any>
 }
 
-class RecommendationAPIClient {
-  private baseURL: string
-  private supabase = createSupabaseClient()
+class RecommendationEngineAPI {
+  private baseUrl: string
+  private supabase = supabase
 
   constructor() {
-    this.baseURL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL || 'http://localhost:8000'
+    // Use Vite environment variable
+    this.baseUrl = import.meta.env.VITE_RECOMMENDATION_API_URL || 'http://localhost:8000'
   }
 
   private async getAuthToken(): Promise<string> {
@@ -62,7 +63,7 @@ class RecommendationAPIClient {
   ): Promise<T> {
     const token = await this.getAuthToken()
     
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
+    const response = await fetch(`${this.baseUrl}${endpoint}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
@@ -99,7 +100,7 @@ class RecommendationAPIClient {
 
   // Health check endpoint (doesn't require auth)
   async healthCheck(): Promise<{ status: string; service: string; version: string }> {
-    const response = await fetch(`${this.baseURL}/health`)
+    const response = await fetch(`${this.baseUrl}/health`)
     if (!response.ok) {
       throw new Error(`Health check failed: ${response.status}`)
     }
@@ -107,7 +108,7 @@ class RecommendationAPIClient {
   }
 }
 
-export const recommendationAPI = new RecommendationAPIClient()
+export const recommendationAPI = new RecommendationEngineAPI()
 
 // Hook for recommendations
 export function useRecommendations() {

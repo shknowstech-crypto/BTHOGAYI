@@ -102,6 +102,8 @@ export default function OnboardingPage() {
       router.push('/dashboard')
     } catch (error) {
       console.error('Failed to complete onboarding:', error)
+      // Show the actual error to help debug
+      alert(`Failed to create profile: ${error instanceof Error ? error.message : 'Unknown error'}. Please check console for details.`)
     } finally {
       setIsLoading(false)
     }

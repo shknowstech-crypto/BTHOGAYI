@@ -172,21 +172,18 @@ export class AuthService {
     
     const campus = this.getCampusFromEmail(user.email)
     const displayName = user.user_metadata?.full_name || user.user_metadata?.name || user.email.split('@')[0]
-    const username = this.generateUsername(displayName)
     
     console.log('🔧 AUTH DEBUG: Generated profile data components:', {
       campus,
       displayName,
-      username,
       emailConfirmed: user.email_confirmed_at
     })
     
     // Create profile data with explicit ID from auth user
     const profileData: any = {
       id: user.id, // Use the Supabase auth user ID
-      bits_email: user.email,
+      email: user.email, // Fixed: use 'email' field as per schema
       display_name: displayName,
-      username: username,
       campus: campus,
       year: additionalData?.year || 1,
       branch: additionalData?.branch || 'Computer Science',
@@ -194,21 +191,27 @@ export class AuthService {
       bio: additionalData?.bio || '',
       age: additionalData?.age || null,
       gender: additionalData?.gender || null,
-      profile_photo: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
       preferences: additionalData?.preferences || {
         age_range: [18, 30],
-        dating_similarity: 1,
-        gender_preference: 'any',
-        connect_similarity: 1,
-        looking_for: ['friends']
+        same_campus_only: false,
+        same_year_preference: false,
+        distance_km: 50
       },
-      email_verified: user.email_confirmed_at ? true : false,
-      student_id_verified: false,
-      photo_verified: false,
-      is_active: true,
+      privacy_settings: {
+        show_age: true,
+        show_year: true,
+        show_branch: true,
+        discoverable: true,
+        show_last_active: false,
+        campus_visibility: "all_campuses"
+      },
+      verified: user.email_confirmed_at ? true : false, // Fixed: use 'verified' field
       profile_completed: false,
-      last_seen: new Date().toISOString(),
-      streak_count: 0
+      last_active: new Date().toISOString(), // Fixed: use 'last_active' field
+      is_active: true,
+      subscription_tier: 'free',
+      daily_swipes_remaining: 50,
+      super_swipes_remaining: 3
     }
 
     console.log('🔧 AUTH DEBUG: Attempting profile creation with data:', JSON.stringify(profileData, null, 2))
@@ -257,9 +260,29 @@ export class AuthService {
 
     console.log('✅ AUTH SUCCESS: Profile created successfully:', {
       id: data.id,
-      email: data.bits_email,
+      email: data.email,
       displayName: data.display_name
     })
+
+    // If user has a profile photo, add it to user_photos table
+    const photoUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture
+    if (photoUrl) {
+      try {
+        await supabase
+          .from('user_photos')
+          .insert({
+            user_id: data.id,
+            photo_url: photoUrl,
+            photo_order: 1,
+            is_primary: true,
+            is_approved: true
+          })
+        console.log('✅ AUTH SUCCESS: Profile photo added')
+      } catch (photoError) {
+        console.log('⚠️ AUTH WARNING: Could not add profile photo:', photoError)
+        // Don't fail profile creation if photo upload fails
+      }
+    }
 
     return data
   }
@@ -379,7 +402,7 @@ export class AuthService {
     await supabase
       .from('users')
       .update({ 
-        last_seen: new Date().toISOString(),
+        last_active: new Date().toISOString(),
         is_active: true
       })
       .eq('id', userId)

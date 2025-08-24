@@ -77,12 +77,10 @@ export class AuthService {
     }
     
     const campus = this.getCampusFromEmail(user.email)
-    const username = this.generateUsername(user.user_metadata?.full_name || user.email.split('@')[0])
     
     const profileData = {
       id: user.id,
-      email: user.email,  // Use 'email' not 'bits_email'
-      student_id: '', // Will be filled during onboarding
+      email: user.email,
       display_name: user.user_metadata?.full_name || user.email.split('@')[0],
       bio: '',
       age: null,
@@ -90,22 +88,34 @@ export class AuthService {
       year: 1,
       branch: '',
       campus: campus,
+      student_id: '',
+      verified: false,
+      profile_completed: false,
+      onboarding_step: 0,
       preferences: {
-        age_range: [18, 30],
-        max_distance: 50,
-        dating_similarity: 1,
-        gender_preference: 'any',
-        connect_similarity: 1
+        age_range: [18, 25],
+        same_campus_only: false,
+        same_year_preference: false,
+        distance_km: 50
       },
-      email_verified: user.email_confirmed_at ? true : false,
-      student_id_verified: false,
-      photo_verified: false,
+      privacy_settings: {
+        show_age: true,
+        show_year: true,
+        show_branch: true,
+        discoverable: true,
+        show_last_active: false,
+        campus_visibility: "all_campuses"
+      },
+      last_active: new Date().toISOString(),
       is_active: true,
-      last_seen: new Date().toISOString(),
-      streak_count: 0,
+      subscription_tier: 'free',
+      daily_swipes_remaining: 50,
+      super_swipes_remaining: 3,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }
+
+    console.log('Creating user profile:', { userId: user.id, profileData })
 
     const { data, error } = await supabase
       .from('users')
@@ -113,54 +123,58 @@ export class AuthService {
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+      console.error('Failed to create user profile:', error)
+      throw new Error(`Failed to create profile: ${error.message} (Code: ${error.code})`)
+    }
+
+    console.log('User profile created successfully:', data)
     return data
   }
 
-  // Update user profile via backend API (safer than direct Supabase)
+  // Update user profile directly via Supabase (optimal for free tier)
   static async updateUserProfile(userId: string, updates: Partial<UserProfile>): Promise<UserProfile> {
     const supabase = createSupabaseClient()
     
-    // Get the current session token
+    // Ensure user is authenticated
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.access_token) {
-      throw new Error('Not authenticated')
+      throw new Error('Not authenticated - please log in again')
     }
 
-    // Try backend API first (recommended)
-    try {
-      const apiUrl = import.meta.env.VITE_RECOMMENDATION_API_URL || 'https://bthogayi.onrender.com'
-      const response = await fetch(`${apiUrl}/api/v1/profile`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify(updates)
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        return result.user
-      }
-    } catch (error) {
-      console.warn('Backend API failed, falling back to direct Supabase:', error)
+    // Ensure the user ID matches the authenticated user
+    if (session.user.id !== userId) {
+      throw new Error('User ID mismatch - security violation')
     }
 
-    // Fallback to direct Supabase update
+    // Prepare updates with timestamp
     const updatesWithTimestamp = {
       ...updates,
       updated_at: new Date().toISOString()
     }
-    
+
+    console.log('Updating user profile:', { userId, updates: updatesWithTimestamp })
+
+    // Use UPSERT to handle cases where user doesn't exist yet
     const { data, error } = await supabase
       .from('users')
-      .update(updatesWithTimestamp)
-      .eq('id', userId)
+      .upsert(
+        { id: userId, ...updatesWithTimestamp },
+        { onConflict: 'id' }
+      )
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+      console.error('Supabase upsert error:', error)
+      throw new Error(`Database error: ${error.message} (Code: ${error.code})`)
+    }
+
+    if (!data) {
+      throw new Error('No data returned from upsert operation')
+    }
+
+    console.log('Profile updated successfully:', data)
     return data
   }
 
@@ -173,8 +187,7 @@ export class AuthService {
       user.year &&
       user.branch &&
       user.student_id &&
-      user.preferences?.looking_for &&
-      user.preferences.looking_for.length > 0
+      user.preferences
     )
   }
 

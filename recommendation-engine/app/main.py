@@ -10,7 +10,7 @@ from slowapi.errors import RateLimitExceeded
 import os
 from dotenv import load_dotenv
 import logging
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime
 
 from .models import RecommendationRequest, RecommendationResponse, UserFeedback

@@ -1,7 +1,8 @@
 import { Routes, Route } from 'react-router-dom'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuthStore } from './lib/store'
 import { AuthService } from './lib/auth'
+import { RecommendationStatus } from './components/ui/recommendation-status'
 
 // Pages
 import HomePage from './pages/HomePage'
@@ -18,11 +19,16 @@ import OnboardingPage from './pages/OnboardingPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
 
 function App() {
-  const { setLoading } = useAuthStore()
+  const { setLoading, isAuthenticated } = useAuthStore()
+  const [isLocalFallback, setIsLocalFallback] = useState(true)
 
   useEffect(() => {
     // Initialize auth state
     setLoading(false)
+    
+    // Check if we're using local fallback
+    const apiUrl = import.meta.env.VITE_RECOMMENDATION_API_URL
+    setIsLocalFallback(!apiUrl)
   }, [setLoading])
 
   return (
@@ -41,6 +47,14 @@ function App() {
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
       </Routes>
+      
+      {/* Show recommendation status only when authenticated */}
+      {isAuthenticated && (
+        <RecommendationStatus 
+          isLocalFallback={isLocalFallback}
+          apiUrl={import.meta.env.VITE_RECOMMENDATION_API_URL}
+        />
+      )}
     </div>
   )
 }

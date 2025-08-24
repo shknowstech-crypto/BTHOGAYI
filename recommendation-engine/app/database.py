@@ -23,6 +23,7 @@ class DatabaseManager:
                 min_size=2,
                 max_size=10,
                 command_timeout=60,
+                statement_cache_size=0,  # Disable prepared statements for pgbouncer compatibility
                 server_settings={
                     'application_name': 'bitspark_recommendation_engine'
                 }
@@ -50,8 +51,9 @@ class DatabaseManager:
                 await self.connect()
             
             async with self.pool.acquire() as conn:
-                await conn.fetchval("SELECT 1")
-            return True
+                # Simple query without prepared statements
+                result = await conn.fetchval("SELECT 1")
+                return result == 1
         except Exception as e:
             logger.error(f"Database health check failed: {e}")
             return False

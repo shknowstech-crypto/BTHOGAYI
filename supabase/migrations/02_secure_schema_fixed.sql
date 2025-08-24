@@ -197,7 +197,6 @@ CREATE POLICY "Users can insert their own profile" ON users
 CREATE POLICY "Verified users can view other verified profiles" ON users 
     FOR SELECT USING (
         verified = true 
-        AND (SELECT verified FROM users WHERE id = auth.uid()) = true
         AND privacy_settings->>'discoverable' = 'true'
     );
 

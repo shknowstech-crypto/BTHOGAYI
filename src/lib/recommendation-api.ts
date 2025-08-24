@@ -4,7 +4,7 @@ import { AuthService } from './auth'
 
 // Secure API Configuration
 const RECOMMENDATION_API_URL = import.meta.env.VITE_RECOMMENDATION_API_URL
-const USE_LOCAL_FALLBACK = !RECOMMENDATION_API_URL
+const USE_LOCAL_FALLBACK = true // Force local fallback for now due to CORS issues
 
 export interface RecommendationRequest {
   user_id: string

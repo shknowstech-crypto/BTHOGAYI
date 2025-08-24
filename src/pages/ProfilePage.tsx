@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { GlassCard } from '@/components/ui/glass-card'
 import { GradientButton } from '@/components/ui/gradient-button'
-import { User, ArrowLeft, Camera, Edit, MapPin, GraduationCap } from 'lucide-react'
+import { User, ArrowLeft, Camera, Edit, MapPin, GraduationCap, X } from 'lucide-react'
 import { useAuthStore } from '@/lib/store'
 import { AuthGuard } from '@/components/auth/auth-guard'
 
@@ -11,6 +11,7 @@ export default function ProfilePage() {
   const { user, isAuthenticated } = useAuthStore()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
+  const [showEditModal, setShowEditModal] = useState(false)
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -58,7 +59,10 @@ export default function ProfilePage() {
               </p>
             </div>
           </div>
-          <GradientButton variant="romantic">
+          <GradientButton 
+            variant="romantic"
+            onClick={() => setShowEditModal(true)}
+          >
             <Edit className="w-4 h-4" />
             Edit Profile
           </GradientButton>
@@ -191,6 +195,53 @@ export default function ProfilePage() {
             </GlassCard>
           </motion.div>
         </div>
+
+        {/* Edit Profile Modal */}
+        {showEditModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-bold text-white">Edit Profile</h3>
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="text-white/70 hover:text-white"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="text-center mb-6">
+                <p className="text-white/70">
+                  To make major changes to your profile, please go through the onboarding process again.
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <GradientButton
+                  variant="secondary"
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </GradientButton>
+                <GradientButton
+                  variant="romantic"
+                  onClick={() => {
+                    setShowEditModal(false)
+                    navigate('/onboarding')
+                  }}
+                  className="flex-1"
+                >
+                  Go to Onboarding
+                </GradientButton>
+              </div>
+            </motion.div>
+          </div>
+        )}
       </div>
     </div>
     </AuthGuard>

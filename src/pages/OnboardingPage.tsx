@@ -67,6 +67,28 @@ export default function OnboardingPage() {
     }
   })
 
+  // Prefill form data with existing user data
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        display_name: user.display_name || prev.display_name,
+        bio: user.bio || prev.bio,
+        age: user.age || prev.age,
+        gender: user.gender || prev.gender,
+        year: user.year || prev.year,
+        branch: user.branch || prev.branch,
+        student_id: user.student_id || prev.student_id,
+        interests: user.interests || prev.interests,
+        preferences: {
+          connect_similarity: user.preferences?.connect_similarity || prev.preferences.connect_similarity,
+          dating_similarity: user.preferences?.dating_similarity || prev.preferences.dating_similarity,
+          looking_for: user.preferences?.looking_for || prev.preferences.looking_for
+        }
+      }))
+    }
+  }, [user])
+
   const steps = [
     { title: 'Basic Info', icon: User },
     { title: 'Academic', icon: GraduationCap },

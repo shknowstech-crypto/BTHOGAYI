@@ -26,6 +26,7 @@ export default function DatingPage() {
   const [showMatch, setShowMatch] = useState(false)
   const [matchedUser, setMatchedUser] = useState<DatingMatch | null>(null)
   const [showPreferences, setShowPreferences] = useState(false)
+  const [showRelationshipSetup, setShowRelationshipSetup] = useState(false)
   const [preferences, setPreferences] = useState({
     gender_preference: user?.preferences?.gender_preference || 'any',
     age_range: user?.preferences?.age_range || [18, 30],
@@ -38,8 +39,16 @@ export default function DatingPage() {
       navigate('/auth')
       return
     }
+
+    // Check if user has set dating as an intent
+    if (!user?.preferences?.looking_for?.includes('dating')) {
+      // User hasn't selected dating as an intent
+      setShowRelationshipSetup(true)
+      return
+    }
+
     loadDatingMatches()
-  }, [isAuthenticated, navigate])
+  }, [isAuthenticated, navigate, user])
 
   const loadDatingMatches = async () => {
     try {
@@ -230,6 +239,64 @@ export default function DatingPage() {
     setSwipeDirection(null)
     setShowMatch(false)
     setMatchedUser(null)
+  }
+
+  // Show relationship setup modal if needed
+  if (showRelationshipSetup) {
+    return (
+      <AuthGuard requireAuth={true} requireCompleteProfile={true}>
+        <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 max-w-lg w-full"
+          >
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-gradient-to-r from-pink-500 to-rose-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Heart className="w-8 h-8 text-white" />
+              </div>
+              <h2 className="text-3xl font-bold text-white mb-4">
+                Ready for Romance? 💕
+              </h2>
+              <p className="text-white/70 mb-6">
+                To access the dating section, you need to update your preferences to include "dating" as one of your interests.
+              </p>
+            </div>
+
+            <div className="space-y-4 mb-8">
+              <div className="bg-white/5 rounded-lg p-4">
+                <h3 className="text-white font-semibold mb-2">What you need to do:</h3>
+                <ul className="text-white/70 space-y-2 text-sm">
+                  <li>• Go to your profile settings</li>
+                  <li>• Add "dating" to your looking for preferences</li>
+                  <li>• Answer additional relationship questions</li>
+                  <li>• Set your dating preferences (age range, etc.)</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <GradientButton
+                variant="secondary"
+                onClick={() => navigate('/dashboard')}
+                className="flex-1"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Dashboard
+              </GradientButton>
+              <GradientButton
+                variant="romantic"
+                onClick={() => navigate('/onboarding')}
+                className="flex-1"
+              >
+                <Heart className="w-4 h-4 mr-2" />
+                Update Preferences
+              </GradientButton>
+            </div>
+          </motion.div>
+        </div>
+      </AuthGuard>
+    )
   }
 
   if (loading) {

@@ -8,9 +8,10 @@ import { Users, ArrowLeft, Heart, MessageCircle, UserPlus, X, Check, Star, MapPi
 import { useAuthStore } from '@/lib/store'
 import { supabase } from '@/lib/supabase'
 import { UserProfile } from '@/lib/supabase'
+import { recommendationAPI } from '@/lib/recommendation-api'
+import type { RecommendationItem } from '@/lib/recommendation-api'
 
-interface PotentialMatch extends UserProfile {
-  compatibility_score: number
+interface PotentialMatch extends UserProfile, RecommendationItem {
   common_interests: string[]
 }
 
@@ -36,6 +37,51 @@ export default function ConnectPage() {
     try {
       setLoading(true)
       
+      if (!user?.id) return
+
+      // Use recommendation API for better matches
+      const response = await recommendationAPI.getRecommendations({
+        user_id: user.id,
+        recommendation_type: 'friends',
+        limit: 20,
+        filters: {
+          campus_filter: [user.campus],
+          active_recently: true,
+          min_compatibility_score: 0.3
+        }
+      })
+
+      // Get full user profiles for the recommended users
+      const userIds = response.recommendations.map(rec => rec.user_id)
+      const { data: userProfiles, error } = await supabase
+        .from('users')
+        .select('*')
+        .in('id', userIds)
+
+      if (error) throw error
+
+      // Merge recommendation data with user profiles
+      const matches = userProfiles.map(profile => {
+        const recommendation = response.recommendations.find(rec => rec.user_id === profile.id)
+        return {
+          ...profile,
+          ...recommendation,
+          common_interests: recommendation?.common_interests || []
+        }
+      })
+
+      setPotentialMatches(matches)
+    } catch (error) {
+      console.error('Error loading potential matches:', error)
+      // Fallback to old method if recommendation API fails
+      await loadPotentialMatchesFallback()
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadPotentialMatchesFallback = async () => {
+    try {
       // Get users from the same campus with similar interests
       const { data: users, error } = await supabase
         .from('users')
@@ -52,16 +98,17 @@ export default function ConnectPage() {
         .map(u => ({
           ...u,
           compatibility_score: calculateCompatibility(u),
-          common_interests: getCommonInterests(u)
+          common_interests: getCommonInterests(u),
+          match_reasons: [`Same campus: ${u.campus}`],
+          explanation: `${Math.round(calculateCompatibility(u) * 100)}% compatibility based on interests and academic profile`,
+          confidence: calculateCompatibility(u)
         }))
         .filter(m => m.compatibility_score > 0.3) // Only show compatible matches
         .sort((a, b) => b.compatibility_score - a.compatibility_score)
 
       setPotentialMatches(matches)
     } catch (error) {
-      console.error('Error loading potential matches:', error)
-    } finally {
-      setLoading(false)
+      console.error('Error in fallback matching:', error)
     }
   }
 

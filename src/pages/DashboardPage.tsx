@@ -6,9 +6,10 @@ import { useNavigate } from 'react-router-dom'
 import { GlassCard } from '@/components/ui/glass-card'
 import { GradientButton } from '@/components/ui/gradient-button'
 import { AuthGuard } from '@/components/auth/auth-guard'
-import { Heart, Users, Ship, MessageCircle, Dice6, Settings, Bell, User, ArrowRight } from 'lucide-react'
+import { Heart, Users, Ship, MessageCircle, Dice6, Settings, Bell, User, ArrowRight, Sparkles, Star } from 'lucide-react'
 import { useAuthStore } from '@/lib/store'
 import { AuthService } from '@/lib/auth'
+import { useRecommendations, RecommendationItem } from '@/lib/recommendation-api'
 
 const features = [
   {
@@ -58,6 +59,27 @@ const features = [
 export default function DashboardPage() {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
+  const { getRecommendations } = useRecommendations()
+  const [recommendations, setRecommendations] = useState<RecommendationItem[]>([])
+  const [loadingRecs, setLoadingRecs] = useState(false)
+
+  useEffect(() => {
+    const loadRecommendations = async () => {
+      if (!user?.id) return
+      
+      setLoadingRecs(true)
+      try {
+        const recs = await getRecommendations(user.id, 'friends', 3)
+        setRecommendations(recs)
+      } catch (error) {
+        console.error('Failed to load recommendations:', error)
+      } finally {
+        setLoadingRecs(false)
+      }
+    }
+
+    loadRecommendations()
+  }, [user?.id])
 
   const handleLogout = async () => {
     try {

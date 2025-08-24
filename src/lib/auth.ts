@@ -322,6 +322,7 @@ export class AuthService {
   // Check if profile is complete
   static isProfileComplete(user: UserProfile): boolean {
     return !!(
+      user.profile_completed &&
       user.display_name &&
       user.bio &&
       user.age &&

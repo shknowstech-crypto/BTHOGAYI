@@ -11,6 +11,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
+    detectSessionInUrl: true,
+    flowType: 'pkce'
   },
   realtime: {
     params: {
@@ -25,6 +27,8 @@ export const createSupabaseClient = () => {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
+      detectSessionInUrl: true,
+      flowType: 'pkce'
     },
     realtime: {
       params: {
@@ -37,14 +41,14 @@ export const createSupabaseClient = () => {
 // Database types
 export interface UserProfile {
   id: string
-  email: string
+  bits_email: string
+  student_id: string
   display_name: string
   username: string
   profile_photo?: string
   bio?: string
   age?: number
   gender?: 'male' | 'female' | 'other'
-  interests: string[]
   year: number
   branch: string
   campus: 'Pilani' | 'Goa' | 'Hyderabad' | 'Dubai'
@@ -55,6 +59,10 @@ export interface UserProfile {
     age_range: [number, number]
     looking_for: ('friends' | 'dating' | 'networking')[]
   }
+  email_verified: boolean
+  student_id_verified: boolean
+  photo_verified: boolean
+  verified: boolean
   is_active: boolean
   profile_completed: boolean
   last_seen: string
@@ -138,7 +146,7 @@ export interface Report {
 export interface Notification {
   id: string
   user_id: string
-  type: 'match' | 'message' | 'ship' | 'connection_request' | 'daily_match' | 'verification'
+  type: 'match' | 'message' | 'ship' | 'connection_request' | 'daily_match'
   title: string
   message: string
   data: Record<string, any>

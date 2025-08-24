@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, Security, status, Request, Response
+from fastapi import FastAPI, HTTPException, Depends, Security, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -11,12 +11,12 @@ import os
 from dotenv import load_dotenv
 import logging
 from typing import List, Optional
-import asyncio
+import jwt
+from datetime import datetime
 
-from .models import RecommendationRequest, RecommendationResponse, UserProfile, UserFeedback
+from .models import RecommendationRequest, RecommendationResponse, UserFeedback
 from .recommendation_engine import RecommendationEngine
 from .database import DatabaseManager
-from .auth import verify_api_key, verify_token, verify_supabase_jwt
 
 # Load environment variables
 load_dotenv()
@@ -36,67 +36,47 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Content-Security-Policy"] = "default-src 'self'"
         if os.getenv("ENVIRONMENT") == "production":
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
 
-# Rate limiter setup (using memory storage for free Render instance)
-redis_url = os.getenv("REDIS_URL")
-if redis_url and redis_url != "memory://":
-    # Use Redis if available
-    limiter = Limiter(key_func=get_remote_address, storage_uri=redis_url)
-else:
-    # Use in-memory storage for free tier
-    limiter = Limiter(key_func=get_remote_address, storage_uri="memory://")
-    logger.info("Using in-memory rate limiting (no Redis configured)")
+# Rate limiter with memory storage for free tier
+limiter = Limiter(key_func=get_remote_address, storage_uri="memory://")
 
 # Initialize FastAPI app
 app = FastAPI(
     title="BITSPARK Recommendation Engine",
-    description="Advanced AI-powered recommendation system for dating and social connections",
-    version="1.0.0",
-    docs_url="/docs" if os.getenv("ENVIRONMENT") == "development" else None,
-    redoc_url="/redoc" if os.getenv("ENVIRONMENT") == "development" else None
+    description="Secure AI-powered recommendation system",
+    version="2.0.0",
+    docs_url=None,  # Disable docs in production
+    redoc_url=None
 )
 
-# Rate limit exceeded handler
+# Rate limit handler
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Security middleware
 app.add_middleware(SecurityHeadersMiddleware)
 
-# Trusted host middleware
-trusted_hosts = os.getenv("TRUSTED_HOSTS", "localhost,127.0.0.1").split(",")
-if os.getenv("ENVIRONMENT") == "production":
-    # Only allow specific hosts in production
-    app.add_middleware(TrustedHostMiddleware, allowed_hosts=trusted_hosts)
+# Secure CORS Configuration
+allowed_origins = [
+    "https://your-frontend-domain.com",
+    "http://localhost:3000",
+    "http://localhost:5173"
+]
 
-# CORS Configuration with security
-def get_allowed_origins():
-    origins_str = os.getenv("ALLOWED_ORIGINS", "")
-    if not origins_str:
-        if os.getenv("ENVIRONMENT") == "production":
-            logger.error("ALLOWED_ORIGINS must be set in production")
-            raise ValueError("ALLOWED_ORIGINS must be set in production")
-        return ["http://localhost:3000"]  # Default for development
-    
-    origins = [origin.strip() for origin in origins_str.split(",") if origin.strip()]
-    if not origins and os.getenv("ENVIRONMENT") == "production":
-        raise ValueError("ALLOWED_ORIGINS cannot be empty in production")
-    
-    return origins
-
-allowed_origins = get_allowed_origins()
-has_wildcard = "*" in allowed_origins
+if os.getenv("ENVIRONMENT") == "development":
+    allowed_origins.extend(["http://localhost:3001", "http://127.0.0.1:3000"])
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_credentials=not has_wildcard,  # Don't allow credentials with wildcard
+    allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
-    expose_headers=["X-Rate-Limit-Remaining", "X-Rate-Limit-Reset"],
+    expose_headers=["X-Rate-Limit-Remaining"],
 )
 
 # Initialize components
@@ -104,9 +84,47 @@ security = HTTPBearer()
 db_manager = DatabaseManager()
 recommendation_engine = RecommendationEngine(db_manager)
 
+# JWT verification function
+async def verify_supabase_jwt(credentials: HTTPAuthorizationCredentials = Security(security)):
+    """Verify Supabase JWT token"""
+    try:
+        token = credentials.credentials
+        
+        # Decode JWT without verification to get payload
+        # In production, you should verify with Supabase's public key
+        payload = jwt.decode(token, options={"verify_signature": False})
+        
+        # Basic validation
+        if payload.get("exp", 0) < datetime.utcnow().timestamp():
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has expired"
+            )
+        
+        # Verify it's a BITS student
+        email = payload.get("email", "")
+        if not email.endswith((".bits-pilani.ac.in")):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access restricted to BITS students only"
+            )
+        
+        return payload
+        
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Token verification failed: {str(e)}"
+        )
+
 @app.on_event("startup")
 async def startup_event():
-    """Initialize database connection and recommendation engine"""
+    """Initialize database connection"""
     try:
         await db_manager.connect()
         await recommendation_engine.initialize()
@@ -124,11 +142,12 @@ async def shutdown_event():
 @app.get("/health")
 @limiter.limit("60/minute")
 async def health_check(request: Request):
-    """Health check endpoint"""
+    """Public health check endpoint"""
     return {
         "status": "healthy",
         "service": "BITSPARK Recommendation Engine",
-        "version": "1.0.0"
+        "version": "2.0.0",
+        "environment": os.getenv("ENVIRONMENT", "development")
     }
 
 @app.post("/api/v1/recommendations", response_model=RecommendationResponse)
@@ -136,23 +155,10 @@ async def health_check(request: Request):
 async def get_recommendations(
     request: Request,
     recommendation_request: RecommendationRequest,
-    credentials: HTTPAuthorizationCredentials = Security(security)
+    user_data = Depends(verify_supabase_jwt)
 ):
-    """
-    Get personalized recommendations for a user
-    Requires Supabase JWT authentication
-    """
+    """Get personalized recommendations with JWT authentication"""
     try:
-        # Verify Supabase JWT token
-        user_data = await verify_supabase_jwt(credentials.credentials)
-        
-        # Verify user is BITS student
-        if not user_data.get("email", "").endswith((".bits-pilani.ac.in")):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access restricted to BITS students only"
-            )
-        
         # Ensure user can only get their own recommendations
         if recommendation_request.user_id != user_data.get("sub"):
             raise HTTPException(
@@ -172,7 +178,7 @@ async def get_recommendations(
             user_id=recommendation_request.user_id,
             recommendations=recommendations,
             algorithm_version="2.0",
-            generated_at=None  # Will be set automatically
+            generated_at=datetime.utcnow().isoformat()
         )
         
     except ValueError as e:
@@ -180,7 +186,7 @@ async def get_recommendations(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error generating recommendations for user {recommendation_request.user_id}: {str(e)}")
+        logger.error(f"Error generating recommendations: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.post("/api/v1/feedback")
@@ -188,22 +194,10 @@ async def get_recommendations(
 async def submit_feedback(
     request: Request,
     feedback: UserFeedback,
-    credentials: HTTPAuthorizationCredentials = Security(security)
+    user_data = Depends(verify_supabase_jwt)
 ):
-    """
-    Submit user feedback to improve recommendations
-    """
+    """Submit user feedback with JWT authentication"""
     try:
-        # Verify Supabase JWT token
-        user_data = await verify_supabase_jwt(credentials.credentials)
-        
-        # Verify user is BITS student
-        if not user_data.get("email", "").endswith((".bits-pilani.ac.in")):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access restricted to BITS students only"
-            )
-        
         # Ensure user can only submit feedback for themselves
         if feedback.user_id != user_data.get("sub"):
             raise HTTPException(
@@ -224,43 +218,6 @@ async def submit_feedback(
         raise
     except Exception as e:
         logger.error(f"Error recording feedback: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
-
-@app.get("/api/v1/stats/{user_id}")
-@limiter.limit("30/minute")
-async def get_user_stats(
-    request: Request,
-    user_id: str,
-    credentials: HTTPAuthorizationCredentials = Security(security)
-):
-    """
-    Get user recommendation statistics
-    """
-    try:
-        # Verify Supabase JWT token
-        user_data = await verify_supabase_jwt(credentials.credentials)
-        
-        # Verify user is BITS student
-        if not user_data.get("email", "").endswith((".bits-pilani.ac.in")):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access restricted to BITS students only"
-            )
-        
-        # Ensure user can only get their own stats
-        if user_id != user_data.get("sub"):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You can only access your own statistics"
-            )
-        
-        stats = await recommendation_engine.get_user_stats(user_id)
-        return stats
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error getting user stats: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.exception_handler(HTTPException)

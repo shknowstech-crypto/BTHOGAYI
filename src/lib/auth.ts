@@ -13,7 +13,44 @@ export class AuthService {
     if (email.includes('goa.bits-pilani.ac.in')) return 'Goa'
     if (email.includes('hyderabad.bits-pilani.ac.in')) return 'Hyderabad'
     if (email.includes('dubai.bits-pilani.ac.in')) return 'Dubai'
-    return 'Pilani' // Default to Pilani for pilani.bits-pilani.ac.in
+    return 'Pilani'
+  }
+
+  // Sign up with email and password
+  static async signUp(email: string, password: string, profileData: Partial<UserProfile>) {
+    const supabase = createSupabaseClient()
+    
+    if (!this.validateBitsEmail(email)) {
+      throw new Error('Please use your BITS email address')
+    }
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        data: {
+          display_name: profileData.display_name,
+          campus: this.getCampusFromEmail(email)
+        }
+      }
+    })
+
+    if (error) throw error
+    return data
+  }
+
+  // Sign in with email and password
+  static async signIn(email: string, password: string) {
+    const supabase = createSupabaseClient()
+    
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    })
+
+    if (error) throw error
+    return data
   }
 
   // Sign in with Google OAuth
@@ -42,6 +79,14 @@ export class AuthService {
     if (error) throw error
   }
 
+  // Get current session
+  static async getSession() {
+    const supabase = createSupabaseClient()
+    const { data: { session }, error } = await supabase.auth.getSession()
+    if (error) throw error
+    return session
+  }
+
   // Get current user
   static async getCurrentUser() {
     const supabase = createSupabaseClient()
@@ -67,33 +112,45 @@ export class AuthService {
     return data
   }
 
-  // Create user profile from OAuth user
-  static async createUserProfile(user: any): Promise<UserProfile> {
+  // Create user profile
+  static async createUserProfile(user: any, additionalData?: Partial<UserProfile>): Promise<UserProfile> {
     const supabase = createSupabaseClient()
+    
+    if (!this.validateBitsEmail(user.email)) {
+      throw new Error('Please use your BITS email address')
+    }
     
     const campus = this.getCampusFromEmail(user.email)
     const username = this.generateUsername(user.user_metadata?.full_name || user.email.split('@')[0])
     
     const profileData = {
       id: user.id,
-      email: user.email,
-      display_name: user.user_metadata?.full_name || user.email.split('@')[0],
+      bits_email: user.email,
+      student_id: additionalData?.student_id || '',
+      display_name: user.user_metadata?.full_name || additionalData?.display_name || user.email.split('@')[0],
       username: username,
       profile_photo: user.user_metadata?.avatar_url,
+      bio: additionalData?.bio || '',
+      age: additionalData?.age,
+      gender: additionalData?.gender,
+      year: additionalData?.year || 1,
+      branch: additionalData?.branch || 'Computer Science',
       campus: campus,
-      year: 1,
-      branch: 'Computer Science',
-      interests: [],
       preferences: {
-        connect_similarity: 1,
+        age_range: [18, 30],
+        max_distance: 50,
         dating_similarity: 1,
         gender_preference: 'any',
-        age_range: [18, 30],
+        connect_similarity: 1,
         looking_for: ['friends']
       },
+      email_verified: user.email_confirmed_at ? true : false,
+      student_id_verified: false,
+      photo_verified: false,
       is_active: true,
       profile_completed: false,
       last_seen: new Date().toISOString(),
+      streak_count: 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }
@@ -136,8 +193,7 @@ export class AuthService {
       user.age &&
       user.year &&
       user.branch &&
-      user.interests &&
-      user.interests.length >= 3 &&
+      user.student_id &&
       user.preferences?.looking_for &&
       user.preferences.looking_for.length > 0
     )

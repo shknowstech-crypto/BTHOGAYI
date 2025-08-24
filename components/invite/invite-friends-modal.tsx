@@ -6,14 +6,14 @@ import { X, Send, Copy, Share2, Users, Mail } from 'lucide-react'
 import { GlassCard } from '@/components/ui/glass-card'
 import { GradientButton } from '@/components/ui/gradient-button'
 import { useAppStore } from '@/lib/store'
-import { createSupabaseClient } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 
-export function InviteFriendsModal() {
-  const { inviteModalOpen, setInviteModalOpen } = useAppStore()
-  const [emails, setEmails] = useState('')
+export function InviteFriendsModal({ isOpen, onClose }: InviteFriendsModalProps) {
+  const [inviteCode, setInviteCode] = useState('')
+  const [shareLink, setShareLink] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [invitesSent, setInvitesSent] = useState(0)
-  const supabase = createSupabaseClient()
+  const [copied, setCopied] = useState(false)
+  const { user } = useAppStore()
 
   const inviteLink = `${window.location.origin}?ref=invite`
 

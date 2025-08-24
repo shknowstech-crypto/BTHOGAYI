@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { GlassCard } from '@/components/ui/glass-card'
 import { GradientButton } from '@/components/ui/gradient-button'
+import { AuthGuard } from '@/components/auth/auth-guard'
 import { Users, ArrowLeft, Heart, MessageCircle, UserPlus, X, Check, Star, MapPin, GraduationCap, User } from 'lucide-react'
 import { useAuthStore } from '@/lib/store'
 import { supabase } from '@/lib/supabase'
@@ -295,7 +296,8 @@ export default function ConnectPage() {
   const currentUser = potentialMatches[currentIndex]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
+    <AuthGuard requireAuth={true} requireCompleteProfile={true}>
+      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
       <div className="container mx-auto px-6 py-8">
         {/* Header */}
         <motion.div
@@ -504,5 +506,6 @@ export default function ConnectPage() {
         </AnimatePresence>
       </div>
     </div>
+    </AuthGuard>
   )
 }

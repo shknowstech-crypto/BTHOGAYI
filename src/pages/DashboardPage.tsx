@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { GlassCard } from '@/components/ui/glass-card'
 import { GradientButton } from '@/components/ui/gradient-button'
+import { AuthGuard } from '@/components/auth/auth-guard'
 import { Heart, Users, Ship, MessageCircle, Dice6, Settings, Bell, User, ArrowRight } from 'lucide-react'
 import { useAuthStore } from '@/lib/store'
 import { AuthService } from '@/lib/auth'
@@ -73,7 +74,8 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900">
+    <AuthGuard requireAuth={true} requireCompleteProfile={true}>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900">
       {/* Clean Header */}
       <div className="border-b border-white/10 backdrop-blur-xl bg-white/5">
         <div className="container mx-auto px-6 py-4">
@@ -213,5 +215,6 @@ export default function DashboardPage() {
         </motion.div>
       </div>
     </div>
+    </AuthGuard>
   )
 }

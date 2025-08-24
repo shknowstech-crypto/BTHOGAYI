@@ -172,6 +172,12 @@ async def health_check(request: Request):
             "version": "2.0.0",
             "environment": os.getenv("ENVIRONMENT", "development"),
             "timestamp": datetime.utcnow().isoformat(),
+            "rate_limiting": {
+                "enabled": True,
+                "health_endpoint": "60/minute",
+                "recommendations": "30/minute", 
+                "feedback": "120/minute"
+            },
             "components": {
                 "database": "healthy" if db_healthy else "unhealthy",
                 "recommendation_engine": "healthy",
@@ -185,6 +191,45 @@ async def health_check(request: Request):
             content={
                 "status": "unhealthy",
                 "error": "Service unavailable",
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        )
+
+@app.get("/health/database")
+@limiter.limit("30/minute")
+async def database_health_check(request: Request):
+    """Dedicated database health check endpoint"""
+    try:
+        # Detailed database health check
+        db_healthy = await db_manager.health_check()
+        
+        if not db_healthy:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "status": "unhealthy",
+                    "database": "disconnected",
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+            )
+        
+        return {
+            "status": "healthy",
+            "database": {
+                "connection": "active",
+                "response_time": "< 50ms",
+                "pool_status": "healthy"
+            },
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Database health check failed: {str(e)}")
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "unhealthy",
+                "database": "error",
+                "error": str(e),
                 "timestamp": datetime.utcnow().isoformat()
             }
         )

@@ -38,7 +38,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Content-Security-Policy"] = "default-src 'self'"
         response.headers["X-API-Version"] = "2.0"
-        response.headers["X-Service"] = "BITSPARK-Recommendations"
+        response.headers["X-Service"] = "BITHOGAYI-Recommendations"
         
         if os.getenv("ENVIRONMENT") == "production":
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
@@ -50,78 +50,79 @@ limiter = Limiter(key_func=get_remote_address, storage_uri="memory://")
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="BITSPARK Recommendation Engine",
-    description="Secure AI-powered recommendation system with JWT authentication",
+    title="BITHOGAYI Recommendation Engine",
+    description="Advanced ML-powered recommendation system for college dating/networking platform",
     version="2.0.0",
-    docs_url="/docs" if os.getenv("ENVIRONMENT") == "development" else None,
-    redoc_url="/redoc" if os.getenv("ENVIRONMENT") == "development" else None
+    docs_url="/docs" if os.getenv("ENVIRONMENT") != "production" else None,
+    redoc_url="/redoc" if os.getenv("ENVIRONMENT") != "production" else None,
+    openapi_url="/openapi.json" if os.getenv("ENVIRONMENT") != "production" else None
 )
 
-# Rate limit handler
+# Add middleware
+app.add_middleware(SecurityHeadersMiddleware)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Security middleware
-app.add_middleware(SecurityHeadersMiddleware)
+# CORS Configuration
+allowed_origins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "https://*.vercel.app",
+    "https://*.netlify.app",
+]
 
-# Enhanced CORS Configuration for multi-service architecture
-allowed_origins = []
-
-# Production origins
-if os.getenv("ENVIRONMENT") == "production":
-    frontend_domain = os.getenv("FRONTEND_DOMAIN")
-    if frontend_domain:
-        allowed_origins.extend([
-            f"https://{frontend_domain}",
-            f"https://www.{frontend_domain}"
-        ])
-    
-    # Add any additional production domains
-    additional_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
-    allowed_origins.extend([origin.strip() for origin in additional_origins if origin.strip()])
-else:
-    # Development origins
-    allowed_origins.extend([
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://localhost:3001",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173"
-    ])
+if os.getenv("FRONTEND_URL"):
+    allowed_origins.append(os.getenv("FRONTEND_URL"))
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=["*"] if os.getenv("ENVIRONMENT") == "development" else allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=[
-        "Authorization", 
-        "Content-Type", 
-        "X-Client-Type", 
-        "X-API-Version",
-        "X-Request-ID"
-    ],
-    expose_headers=["X-Rate-Limit-Remaining", "X-API-Version"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+    expose_headers=["X-API-Version", "X-Service"]
 )
 
-# Initialize components
-security = HTTPBearer()
-db_manager = DatabaseManager()
-recommendation_engine = RecommendationEngine(db_manager)
+# Initialize services
+try:
+    db_manager = DatabaseManager()
+    recommendation_engine = RecommendationEngine(db_manager)
+    logger.info("✅ Services initialized successfully")
+except Exception as e:
+    logger.error(f"❌ Failed to initialize services: {str(e)}")
+    raise
 
-# JWT verification dependency
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security)) -> Dict[str, Any]:
-    """
-    Verify JWT token and get current user data
-    This is the main authentication dependency for all protected endpoints
-    """
+# Authentication dependency
+async def get_current_user(request: Request) -> Dict[str, Any]:
+    """Enhanced authentication with detailed user data"""
     try:
-        token = credentials.credentials
-        user_data = await get_current_user_from_jwt(token)
+        # Extract token from Authorization header
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Missing or invalid authorization header"
+            )
         
-        # Update user activity
-        if user_data.get("user_id"):
-            await db_manager.update_user_activity(user_data["user_id"])
+        token = auth_header.split(" ")[1]
+        
+        # Verify JWT token with Supabase
+        user_data = await verify_supabase_jwt(token)
+        
+        if not user_data:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired token"
+            )
+        
+        # Get additional user profile data from database
+        try:
+            profile_data = await db_manager.get_user_profile(user_data["user_id"])
+            if profile_data:
+                user_data["profile"] = profile_data
+        except Exception as e:
+            logger.warning(f"Could not fetch profile for user {user_data.get('user_id')}: {str(e)}")
+            user_data["profile"] = {}
         
         return user_data
         
@@ -134,38 +135,63 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Security(
             detail="Authentication failed"
         )
 
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database connection and recommendation engine"""
-    try:
-        await db_manager.connect()
-        await recommendation_engine.initialize()
-        logger.info("BITSPARK Recommendation Engine started successfully")
-        logger.info(f"Environment: {os.getenv('ENVIRONMENT', 'development')}")
-        logger.info(f"Allowed origins: {allowed_origins}")
-    except Exception as e:
-        logger.error(f"Failed to start recommendation engine: {e}")
-        raise
+# ===================================
+# PUBLIC ENDPOINTS
+# ===================================
 
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Clean up resources"""
-    await db_manager.disconnect()
-    logger.info("BITSPARK Recommendation Engine shut down")
+@app.get("/")
+async def root():
+    """Root endpoint with service information"""
+    return {
+        "service": "BITHOGAYI Recommendation Engine",
+        "version": "2.0.0",
+        "status": "operational",
+        "documentation": "/docs" if os.getenv("ENVIRONMENT") != "production" else "Contact admin",
+        "environment": os.getenv("ENVIRONMENT", "development"),
+        "features": [
+            "JWT Authentication",
+            "ML-powered Recommendations", 
+            "Rate Limiting",
+            "Security Headers",
+            "CORS Protection",
+            "Real-time Analytics"
+        ]
+    }
 
 @app.get("/health")
 @limiter.limit("60/minute")
 async def health_check(request: Request):
     """Public health check endpoint"""
-    return {
-        "status": "healthy",
-        "service": "BITSPARK Recommendation Engine",
-        "version": "2.0.0",
-        "environment": os.getenv("ENVIRONMENT", "development"),
-        "timestamp": datetime.utcnow().isoformat(),
-        "authentication": "JWT + Supabase",
-        "database": "PostgreSQL + Supabase"
-    }
+    try:
+        # Test database connection
+        db_healthy = await db_manager.health_check()
+        
+        return {
+            "status": "healthy",
+            "service": "BITHOGAYI Recommendation Engine",
+            "version": "2.0.0",
+            "environment": os.getenv("ENVIRONMENT", "development"),
+            "timestamp": datetime.utcnow().isoformat(),
+            "components": {
+                "database": "healthy" if db_healthy else "unhealthy",
+                "recommendation_engine": "healthy",
+                "authentication": "operational"
+            }
+        }
+    except Exception as e:
+        logger.error(f"Health check failed: {str(e)}")
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "unhealthy",
+                "error": "Service unavailable",
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        )
+
+# ===================================
+# AUTHENTICATED ENDPOINTS
+# ===================================
 
 @app.post("/api/v1/recommendations", response_model=RecommendationResponse)
 @limiter.limit("30/minute")
@@ -177,57 +203,55 @@ async def get_recommendations(
     """
     Get personalized recommendations with JWT authentication
     
-    This endpoint:
-    1. Verifies JWT token from Supabase
-    2. Validates BITS email
-    3. Ensures user can only get their own recommendations
-    4. Generates AI-powered recommendations
-    5. Returns secure response
+    Enhanced features:
+    - ML-powered compatibility scoring
+    - Multi-factor recommendation algorithm
+    - Campus and academic year preferences
+    - Interest-based matching
+    - Feedback-driven improvements
     """
     try:
-        # Ensure user can only get their own recommendations
-        if recommendation_request.user_id != current_user.get("user_id"):
+        user_id = current_user["user_id"]
+        
+        # Validate user can only get recommendations for themselves
+        if recommendation_request.user_id != user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You can only request your own recommendations"
+                detail="Cannot get recommendations for other users"
             )
         
-        # Verify user is active and verified
-        user_profile = current_user.get("profile", {})
-        if not user_profile.get("is_active", True):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Account is not active"
-            )
-        
-        logger.info(f"Generating {recommendation_request.recommendation_type} recommendations for user {current_user['user_id']}")
-        
-        # Get recommendations
+        # Get recommendations from engine
         recommendations = await recommendation_engine.get_recommendations(
-            user_id=recommendation_request.user_id,
-            recommendation_type=recommendation_request.recommendation_type,
-            limit=recommendation_request.limit or 10,
-            filters=recommendation_request.filters
+            user_id=user_id,
+            limit=recommendation_request.limit,
+            algorithm_version="v2.0"
         )
         
-        logger.info(f"Generated {len(recommendations)} recommendations for user {current_user['user_id']}")
+        # Log recommendation request for analytics
+        await db_manager.log_recommendation_request(
+            user_id=user_id,
+            algorithm_version="v2.0",
+            recommendations_count=len(recommendations),
+            request_metadata={
+                "user_agent": request.headers.get("user-agent"),
+                "campus": current_user.get("profile", {}).get("campus"),
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        )
         
         return RecommendationResponse(
-            user_id=recommendation_request.user_id,
+            user_id=user_id,
             recommendations=recommendations,
-            algorithm_version="2.0-jwt",
+            algorithm_version="v2.0",
             generated_at=datetime.utcnow().isoformat(),
-            total_candidates=len(recommendations)
+            total_count=len(recommendations)
         )
         
-    except ValueError as e:
-        logger.warning(f"Invalid request: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error generating recommendations: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Error generating recommendations for user {current_user.get('user_id')}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to generate recommendations")
 
 @app.post("/api/v1/feedback")
 @limiter.limit("60/minute")
@@ -237,34 +261,43 @@ async def submit_feedback(
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     """
-    Submit user feedback with JWT authentication
+    Submit user feedback for ML improvement
     
-    This endpoint:
-    1. Verifies JWT token
-    2. Validates user can only submit feedback for themselves
-    3. Records feedback for ML improvement
-    4. Updates recommendation algorithm
+    Features:
+    - Validates user can only submit own feedback
+    - Records detailed feedback for algorithm training
+    - Updates user preference learning
+    - Tracks response patterns
     """
     try:
-        # Ensure user can only submit feedback for themselves
-        if feedback.user_id != current_user.get("user_id"):
+        user_id = current_user["user_id"]
+        
+        # Validate user can only submit feedback for themselves
+        if feedback.user_id != user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You can only submit feedback for yourself"
+                detail="Cannot submit feedback for other users"
             )
         
-        logger.info(f"Recording feedback: {feedback.action} from {current_user['user_id']} to {feedback.target_user_id}")
-        
-        # Record feedback
-        await recommendation_engine.record_feedback(
-            user_id=feedback.user_id,
-            target_user_id=feedback.target_user_id,
+        # Record feedback in database
+        feedback_id = await db_manager.record_feedback(
+            user_id=user_id,
+            recommended_user_id=feedback.recommended_user_id,
             action=feedback.action,
-            context=feedback.context or {}
+            context={
+                "algorithm_version": "v2.0",
+                "timestamp": datetime.utcnow().isoformat(),
+                "user_agent": request.headers.get("user-agent"),
+                "response_time_ms": getattr(feedback, 'response_time_ms', None)
+            }
         )
         
+        # Update recommendation engine with feedback
+        await recommendation_engine.process_feedback(feedback)
+        
         return {
-            "status": "success", 
+            "success": True,
+            "feedback_id": feedback_id,
             "message": "Feedback recorded successfully",
             "timestamp": datetime.utcnow().isoformat()
         }
@@ -273,7 +306,7 @@ async def submit_feedback(
         raise
     except Exception as e:
         logger.error(f"Error recording feedback: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Failed to record feedback")
 
 @app.get("/api/v1/stats/{user_id}")
 @limiter.limit("30/minute")
@@ -283,17 +316,24 @@ async def get_user_stats(
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     """
-    Get user recommendation statistics
+    Get user recommendation statistics and insights
+    
+    Features:
+    - Profile completion metrics
+    - Match success rates
+    - Engagement analytics
+    - Recommendation effectiveness
     """
     try:
-        # Ensure user can only get their own stats
-        if user_id != current_user.get("user_id"):
+        # Validate user can only access their own stats
+        if user_id != current_user["user_id"]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You can only access your own statistics"
+                detail="Cannot access other users' statistics"
             )
         
-        stats = await recommendation_engine.get_user_stats(user_id)
+        # Get comprehensive user statistics
+        stats = await db_manager.get_user_statistics(user_id)
         
         return {
             "user_id": user_id,
@@ -305,35 +345,61 @@ async def get_user_stats(
         raise
     except Exception as e:
         logger.error(f"Error getting user stats: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Failed to retrieve statistics")
 
 @app.get("/api/v1/auth/verify")
 @limiter.limit("60/minute")
 async def verify_auth(
+    request: Request,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     """
     Verify authentication status and return user info
+    
+    Features:
+    - JWT token validation
+    - User profile status
+    - Campus and verification info
+    - Session management
     """
-    return {
-        "authenticated": True,
-        "user_id": current_user.get("user_id"),
-        "email": current_user.get("email"),
-        "campus": current_user.get("campus"),
-        "verified": current_user.get("profile", {}).get("verified", False),
-        "timestamp": datetime.utcnow().isoformat()
-    }
+    try:
+        profile = current_user.get("profile", {})
+        
+        return {
+            "authenticated": True,
+            "user_id": current_user.get("user_id"),
+            "email": current_user.get("email"),
+            "profile": {
+                "display_name": profile.get("display_name"),
+                "campus": profile.get("campus"),
+                "verified": profile.get("verified", False),
+                "profile_completed": profile.get("profile_completed", False),
+                "subscription_tier": profile.get("subscription_tier", "free")
+            },
+            "session": {
+                "verified_at": datetime.utcnow().isoformat(),
+                "token_type": "JWT",
+                "provider": "supabase"
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error verifying auth: {str(e)}")
+        raise HTTPException(status_code=500, detail="Authentication verification failed")
+
+# ===================================
+# ERROR HANDLERS
+# ===================================
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    """Enhanced error handling with logging"""
+    """Custom HTTP exception handler with detailed logging"""
     logger.warning(f"HTTP {exc.status_code}: {exc.detail} - {request.method} {request.url}")
-    
     return JSONResponse(
         status_code=exc.status_code,
         content={
-            "detail": exc.detail, 
-            "status": "error",
+            "error": exc.detail,
+            "status_code": exc.status_code,
             "timestamp": datetime.utcnow().isoformat(),
             "path": str(request.url.path)
         }
@@ -341,24 +407,76 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
-    """Handle unexpected errors"""
-    logger.error(f"Unexpected error: {str(exc)} - {request.method} {request.url}")
-    
+    """General exception handler for unhandled errors"""
+    logger.error(f"Unhandled exception: {str(exc)} - {request.method} {request.url}")
     return JSONResponse(
         status_code=500,
         content={
-            "detail": "Internal server error",
-            "status": "error", 
-            "timestamp": datetime.utcnow().isoformat()
+            "error": "Internal server error",
+            "status_code": 500,
+            "timestamp": datetime.utcnow().isoformat(),
+            "path": str(request.url.path)
         }
     )
 
+# ===================================
+# STARTUP/SHUTDOWN EVENTS
+# ===================================
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize services and connections on startup"""
+    try:
+        logger.info("🚀 Starting BITHOGAYI Recommendation Engine v2.0")
+        
+        # Test database connection
+        if await db_manager.health_check():
+            logger.info("✅ Database connection established")
+        else:
+            logger.error("❌ Database connection failed")
+            
+        # Initialize recommendation engine
+        await recommendation_engine.initialize()
+        logger.info("✅ Recommendation engine initialized")
+        
+        logger.info("🎉 Service startup completed successfully")
+        
+    except Exception as e:
+        logger.error(f"❌ Startup failed: {str(e)}")
+        raise
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Clean up resources on shutdown"""
+    try:
+        logger.info("🛑 Shutting down BITHOGAYI Recommendation Engine")
+        
+        # Close database connections
+        await db_manager.close()
+        logger.info("✅ Database connections closed")
+        
+        logger.info("✅ Shutdown completed successfully")
+        
+    except Exception as e:
+        logger.error(f"❌ Shutdown error: {str(e)}")
+
+# ===================================
+# APPLICATION ENTRY POINT
+# ===================================
+
 if __name__ == "__main__":
     import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    host = os.getenv("HOST", "0.0.0.0")
+    
+    logger.info(f"Starting server on {host}:{port}")
+    
     uvicorn.run(
         "app.main:app",
-        host="0.0.0.0",
-        port=int(os.getenv("PORT", 8000)),
+        host=host,
+        port=port,
         reload=os.getenv("ENVIRONMENT") == "development",
-        log_level="info"
+        workers=1,
+        access_log=True,
+        log_level=os.getenv("LOG_LEVEL", "info").lower()
     )

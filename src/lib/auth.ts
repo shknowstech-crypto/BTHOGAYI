@@ -1,4 +1,4 @@
-import { createSupabaseClient } from './supabase'
+import { supabase } from './supabase'
 import { UserProfile } from './supabase'
 
 export class AuthService {
@@ -16,9 +16,27 @@ export class AuthService {
     return 'Pilani'
   }
 
-  // Sign up with email and password
+  // Primary authentication method - Google OAuth
+  static async signInWithGoogle() {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+          hd: 'pilani.bits-pilani.ac.in,goa.bits-pilani.ac.in,hyderabad.bits-pilani.ac.in,dubai.bits-pilani.ac.in'
+        },
+      },
+    })
+
+    if (error) throw error
+    return data
+  }
+
+  // Fallback email/password auth (for development)
   static async signUp(email: string, password: string, profileData: Partial<UserProfile>) {
-    const supabase = createSupabaseClient()
+    
     
     if (!this.validateBitsEmail(email)) {
       throw new Error('Please use your BITS email address')
@@ -40,9 +58,8 @@ export class AuthService {
     return data
   }
 
-  // Sign in with email and password
   static async signIn(email: string, password: string) {
-    const supabase = createSupabaseClient()
+    
     
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -53,51 +70,41 @@ export class AuthService {
     return data
   }
 
-  // Sign in with Google OAuth
-  static async signInWithGoogle() {
-    const supabase = createSupabaseClient()
-    
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent',
-        },
-      },
-    })
-
-    if (error) throw error
-    return data
-  }
-
   // Sign out
   static async signOut() {
-    const supabase = createSupabaseClient()
+    
     const { error } = await supabase.auth.signOut()
     if (error) throw error
   }
 
-  // Get current session
+  // Get current session with JWT token
   static async getSession() {
-    const supabase = createSupabaseClient()
+    
     const { data: { session }, error } = await supabase.auth.getSession()
     if (error) throw error
     return session
   }
 
+  // Get JWT token for API calls
+  static async getJWTToken(): Promise<string | null> {
+    const session = await this.getSession()
+    return session?.access_token || null
+  }
+
   // Get current user
   static async getCurrentUser() {
-    const supabase = createSupabaseClient()
+    
     const { data: { user }, error } = await supabase.auth.getUser()
     if (error) throw error
     return user
   }
 
-  // Get user profile
+  // Get user profile by ID
   static async getUserProfile(userId: string): Promise<UserProfile | null> {
-    const supabase = createSupabaseClient()
+    
+    
+    console.log('🔍 AUTH DEBUG: Fetching profile for user ID:', userId)
+    
     const { data, error } = await supabase
       .from('users')
       .select('*')
@@ -105,40 +112,91 @@ export class AuthService {
       .single()
 
     if (error) {
-      console.error('Error fetching user profile:', error)
+      console.error('❌ AUTH ERROR: Failed to fetch user profile:', {
+        userId,
+        code: error.code,
+        message: error.message,
+        details: error.details
+      })
+      
+      if (error.code === 'PGRST116') {
+        console.log('🔍 AUTH DEBUG: User profile not found (expected for new users)')
+        return null
+      }
+      
+      console.error('❌ AUTH ERROR: Unexpected error fetching profile:', error)
       return null
+    }
+
+    if (!data) {
+      console.log('🔍 AUTH DEBUG: No profile data returned for user:', userId)
+      return null
+    }
+
+    console.log('✅ AUTH SUCCESS: Profile found:', {
+      id: data.id,
+      email: data.bits_email,
+      displayName: data.display_name,
+      profileCompleted: data.profile_completed
+    })
+
+    // Handle interests field - parse if string, keep if already object
+    if (data.interests) {
+      try {
+        if (typeof data.interests === 'string') {
+          data.interests = JSON.parse(data.interests)
+        }
+      } catch (e) {
+        console.warn('⚠️ AUTH WARNING: Failed to parse interests JSON:', e)
+        data.interests = []
+      }
     }
 
     return data
   }
 
-  // Create user profile
+  // Create user profile from Google OAuth or manual signup
   static async createUserProfile(user: any, additionalData?: Partial<UserProfile>): Promise<UserProfile> {
-    const supabase = createSupabaseClient()
+    console.log('🔧 AUTH DEBUG: Starting profile creation for user:', { 
+      id: user.id, 
+      email: user.email, 
+      metadata: user.user_metadata,
+      additionalData 
+    })
     
+    // Validate BITS email
     if (!this.validateBitsEmail(user.email)) {
-      throw new Error('Please use your BITS email address')
+      console.error('❌ AUTH ERROR: Invalid BITS email:', user.email)
+      throw new Error('Please use your BITS email address to sign in')
     }
     
     const campus = this.getCampusFromEmail(user.email)
-    const username = this.generateUsername(user.user_metadata?.full_name || user.email.split('@')[0])
+    const displayName = user.user_metadata?.full_name || user.user_metadata?.name || user.email.split('@')[0]
+    const username = this.generateUsername(displayName)
     
-    const profileData = {
-      id: user.id,
+    console.log('🔧 AUTH DEBUG: Generated profile data components:', {
+      campus,
+      displayName,
+      username,
+      emailConfirmed: user.email_confirmed_at
+    })
+    
+    // Create profile data with explicit ID from auth user
+    const profileData: any = {
+      id: user.id, // Use the Supabase auth user ID
       bits_email: user.email,
-      student_id: additionalData?.student_id || '',
-      display_name: user.user_metadata?.full_name || additionalData?.display_name || user.email.split('@')[0],
+      display_name: displayName,
       username: username,
-      profile_photo: user.user_metadata?.avatar_url,
-      bio: additionalData?.bio || '',
-      age: additionalData?.age,
-      gender: additionalData?.gender,
+      campus: campus,
       year: additionalData?.year || 1,
       branch: additionalData?.branch || 'Computer Science',
-      campus: campus,
-      preferences: {
+      student_id: additionalData?.student_id || '',
+      bio: additionalData?.bio || '',
+      age: additionalData?.age || null,
+      gender: additionalData?.gender || null,
+      profile_photo: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+      preferences: additionalData?.preferences || {
         age_range: [18, 30],
-        max_distance: 50,
         dating_similarity: 1,
         gender_preference: 'any',
         connect_similarity: 1,
@@ -150,10 +208,10 @@ export class AuthService {
       is_active: true,
       profile_completed: false,
       last_seen: new Date().toISOString(),
-      streak_count: 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      streak_count: 0
     }
+
+    console.log('🔧 AUTH DEBUG: Attempting profile creation with data:', JSON.stringify(profileData, null, 2))
 
     const { data, error } = await supabase
       .from('users')
@@ -161,28 +219,104 @@ export class AuthService {
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+      console.error('❌ AUTH ERROR: Profile creation failed:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      })
+      
+      // Check if user already exists
+      if (error.code === '23505' || error.message?.includes('duplicate')) {
+        console.log('🔍 AUTH DEBUG: User already exists, fetching existing profile...')
+        const existingProfile = await this.getUserProfile(user.id)
+        if (existingProfile) {
+          console.log('✅ AUTH SUCCESS: Found existing profile:', existingProfile.id)
+          return existingProfile
+        }
+        console.error('❌ AUTH ERROR: User exists but profile not found')
+      }
+      
+      // More specific error messages
+      if (error.message?.includes('violates check constraint')) {
+        console.error('❌ AUTH ERROR: Data violates database constraints:', error.message)
+        throw new Error('Invalid data format. Please contact support.')
+      } else if (error.message?.includes('not-null constraint')) {
+        console.error('❌ AUTH ERROR: Missing required field:', error.message)
+        throw new Error('Missing required information. Please try again.')
+      } else {
+        console.error('❌ AUTH ERROR: Unknown database error:', {
+          code: error.code,
+          message: error.message,
+          details: error.details
+        })
+        throw new Error(`Profile creation failed: ${error.message}`)
+      }
+    }
+
+    console.log('✅ AUTH SUCCESS: Profile created successfully:', {
+      id: data.id,
+      email: data.bits_email,
+      displayName: data.display_name
+    })
+
     return data
   }
 
   // Update user profile
   static async updateUserProfile(userId: string, updates: Partial<UserProfile>): Promise<UserProfile> {
-    const supabase = createSupabaseClient()
+    
     
     const updatesWithTimestamp = {
       ...updates,
       updated_at: new Date().toISOString()
     }
     
+    // Remove interests from updates as they're handled separately
+    const { interests, ...profileUpdates } = updatesWithTimestamp as any
+    
     const { data, error } = await supabase
       .from('users')
-      .update(updatesWithTimestamp)
+      .update(profileUpdates)
       .eq('id', userId)
       .select()
       .single()
 
     if (error) throw error
+
+    // Update interests if provided
+    if (interests && Array.isArray(interests)) {
+      await this.updateUserInterests(userId, interests)
+    }
+
     return data
+  }
+
+  // Update user interests
+  static async updateUserInterests(userId: string, interests: string[]): Promise<void> {
+    
+    
+    // Delete existing interests
+    await supabase
+      .from('user_interests')
+      .delete()
+      .eq('user_id', userId)
+
+    // Insert new interests
+    if (interests.length > 0) {
+      const interestData = interests.map(interest => ({
+        user_id: userId,
+        interest,
+        weight: 1.0
+      }))
+
+      const { error } = await supabase
+        .from('user_interests')
+        .insert(interestData)
+
+      if (error) throw error
+    }
   }
 
   // Check if profile is complete
@@ -199,10 +333,68 @@ export class AuthService {
     )
   }
 
+  // Validate JWT token for API calls
+  static async validateJWTToken(token: string): Promise<boolean> {
+    try {
+      
+      const { data: { user }, error } = await supabase.auth.getUser(token)
+      
+      if (error || !user) return false
+      
+      // Additional validation for BITS email
+      return this.validateBitsEmail(user.email || '')
+    } catch (error) {
+      console.error('JWT validation failed:', error)
+      return false
+    }
+  }
+
+  // Get user data from JWT token
+  static async getUserFromJWT(token: string): Promise<any> {
+    try {
+      
+      const { data: { user }, error } = await supabase.auth.getUser(token)
+      
+      if (error || !user) return null
+      
+      return user
+    } catch (error) {
+      console.error('Failed to get user from JWT:', error)
+      return null
+    }
+  }
+
   // Generate unique username
   private static generateUsername(displayName: string): string {
     const base = displayName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 10)
     const random = Math.floor(Math.random() * 1000)
     return `${base}${random}`
+  }
+
+  // Update user activity (for recommendation engine)
+  static async updateUserActivity(userId: string): Promise<void> {
+    
+    
+    await supabase
+      .from('users')
+      .update({ 
+        last_seen: new Date().toISOString(),
+        is_active: true
+      })
+      .eq('id', userId)
+  }
+
+  // Sync user data with recommendation engine
+  static async syncWithRecommendationEngine(userId: string): Promise<void> {
+    try {
+      const token = await this.getJWTToken()
+      if (!token) return
+
+      // The recommendation engine will validate the JWT and extract user data
+      // No need to send user data explicitly - it will fetch from database
+      await this.updateUserActivity(userId)
+    } catch (error) {
+      console.error('Failed to sync with recommendation engine:', error)
+    }
   }
 }

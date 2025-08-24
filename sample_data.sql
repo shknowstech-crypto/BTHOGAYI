@@ -19,7 +19,7 @@ INSERT INTO users (
 ) VALUES 
 -- Verified BITS students/alumni
 ('2021A7PS0001P@pilani.bits-pilani.ac.in', '2021A7PS0001P', 'Arjun Sharma', 'arjun_cs', 'CS grad passionate about AI and sports photography', 23, 'male', 4, 'Computer Science', 'Pilani', true, true, true),
-('2022A3PS0002G@goa.bits-pilani.ac.in', 'Priya Patel', '2022A3PS0002G', 'priya_ece', 'Electronics engineer turned data scientist, love exploring new places', 22, 'female', 3, 'Electronics & Communication', 'Goa', true, true, true),
+('2022A3PS0002G@goa.bits-pilani.ac.in', '2022A3PS0002G', 'Priya Patel', 'priya_ece', 'Electronics engineer turned data scientist, love exploring new places', 22, 'female', 3, 'Electronics & Communication', 'Goa', true, true, true),
 ('2023A7PS0003H@hyderabad.bits-pilani.ac.in', '2023A7PS0003H', 'Rohit Kumar', 'rohit_dev', 'Blockchain developer and gaming enthusiast', 21, 'male', 2, 'Computer Science', 'Hyderabad', true, true, true),
 ('2021A1PS0004P@pilani.bits-pilani.ac.in', '2021A1PS0004P', 'Sneha Gupta', 'sneha_design', 'UX designer with a passion for digital art and literature', 23, 'female', 4, 'Design', 'Pilani', true, true, true),
 ('2022A2PS0005G@goa.bits-pilani.ac.in', '2022A2PS0005G', 'Vikram Singh', 'vikram_mech', 'DevOps engineer who loves mountains and experimenting with recipes', 22, 'male', 3, 'Mechanical Engineering', 'Goa', true, true, true),

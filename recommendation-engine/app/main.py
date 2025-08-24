@@ -11,12 +11,12 @@ import os
 from dotenv import load_dotenv
 import logging
 from typing import List, Optional
-import jwt
 from datetime import datetime
 
 from .models import RecommendationRequest, RecommendationResponse, UserFeedback
 from .recommendation_engine import RecommendationEngine
 from .database import DatabaseManager
+from .auth import verify_supabase_jwt, get_current_user_from_jwt
 
 # Load environment variables
 load_dotenv()
@@ -37,13 +37,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Content-Security-Policy"] = "default-src 'self'"
-        
-        # Add rate limit headers for visibility
-        response.headers["X-Rate-Limit-Limit"] = "60"
-        response.headers["X-Rate-Limit-Window"] = "60"
+        response.headers["X-API-Version"] = "2.0"
+        response.headers["X-Service"] = "BITSPARK-Recommendations"
         
         if os.getenv("ENVIRONMENT") == "production":
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        
         return response
 
 # Rate limiter with memory storage for free tier
@@ -52,10 +51,10 @@ limiter = Limiter(key_func=get_remote_address, storage_uri="memory://")
 # Initialize FastAPI app
 app = FastAPI(
     title="BITSPARK Recommendation Engine",
-    description="Secure AI-powered recommendation system",
+    description="Secure AI-powered recommendation system with JWT authentication",
     version="2.0.0",
-    docs_url=None,  # Disable docs in production
-    redoc_url=None
+    docs_url="/docs" if os.getenv("ENVIRONMENT") == "development" else None,
+    redoc_url="/redoc" if os.getenv("ENVIRONMENT") == "development" else None
 )
 
 # Rate limit handler
@@ -65,23 +64,44 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # Security middleware
 app.add_middleware(SecurityHeadersMiddleware)
 
-# Secure CORS Configuration
-allowed_origins = [
-    "https://your-frontend-domain.com",
-    "http://localhost:3000",
-    "http://localhost:5173"
-]
+# Enhanced CORS Configuration for multi-service architecture
+allowed_origins = []
 
-if os.getenv("ENVIRONMENT") == "development":
-    allowed_origins.extend(["http://localhost:3001", "http://127.0.0.1:3000"])
+# Production origins
+if os.getenv("ENVIRONMENT") == "production":
+    frontend_domain = os.getenv("FRONTEND_DOMAIN")
+    if frontend_domain:
+        allowed_origins.extend([
+            f"https://{frontend_domain}",
+            f"https://www.{frontend_domain}"
+        ])
+    
+    # Add any additional production domains
+    additional_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
+    allowed_origins.extend([origin.strip() for origin in additional_origins if origin.strip()])
+else:
+    # Development origins
+    allowed_origins.extend([
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:3001",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173"
+    ])
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type"],
-    expose_headers=["X-Rate-Limit-Remaining"],
+    allow_headers=[
+        "Authorization", 
+        "Content-Type", 
+        "X-Client-Type", 
+        "X-API-Version",
+        "X-Request-ID"
+    ],
+    expose_headers=["X-Rate-Limit-Remaining", "X-API-Version"],
 )
 
 # Initialize components
@@ -89,51 +109,40 @@ security = HTTPBearer()
 db_manager = DatabaseManager()
 recommendation_engine = RecommendationEngine(db_manager)
 
-# JWT verification function
-async def verify_supabase_jwt(credentials: HTTPAuthorizationCredentials = Security(security)):
-    """Verify Supabase JWT token"""
+# JWT verification dependency
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security)) -> Dict[str, Any]:
+    """
+    Verify JWT token and get current user data
+    This is the main authentication dependency for all protected endpoints
+    """
     try:
         token = credentials.credentials
+        user_data = await get_current_user_from_jwt(token)
         
-        # Decode JWT without verification to get payload
-        # In production, you should verify with Supabase's public key
-        payload = jwt.decode(token, options={"verify_signature": False})
+        # Update user activity
+        if user_data.get("user_id"):
+            await db_manager.update_user_activity(user_data["user_id"])
         
-        # Basic validation
-        if payload.get("exp", 0) < datetime.utcnow().timestamp():
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token has expired"
-            )
+        return user_data
         
-        # Verify it's a BITS student
-        email = payload.get("email", "")
-        if not email.endswith((".bits-pilani.ac.in")):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access restricted to BITS students only"
-            )
-        
-        return payload
-        
-    except jwt.InvalidTokenError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token"
-        )
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Authentication error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Token verification failed: {str(e)}"
+            detail="Authentication failed"
         )
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize database connection"""
+    """Initialize database connection and recommendation engine"""
     try:
         await db_manager.connect()
         await recommendation_engine.initialize()
-        logger.info("Recommendation engine started successfully")
+        logger.info("BITSPARK Recommendation Engine started successfully")
+        logger.info(f"Environment: {os.getenv('ENVIRONMENT', 'development')}")
+        logger.info(f"Allowed origins: {allowed_origins}")
     except Exception as e:
         logger.error(f"Failed to start recommendation engine: {e}")
         raise
@@ -142,7 +151,7 @@ async def startup_event():
 async def shutdown_event():
     """Clean up resources"""
     await db_manager.disconnect()
-    logger.info("Recommendation engine shut down")
+    logger.info("BITSPARK Recommendation Engine shut down")
 
 @app.get("/health")
 @limiter.limit("60/minute")
@@ -153,75 +162,66 @@ async def health_check(request: Request):
         "service": "BITSPARK Recommendation Engine",
         "version": "2.0.0",
         "environment": os.getenv("ENVIRONMENT", "development"),
-        "uptime": "running"
+        "timestamp": datetime.utcnow().isoformat(),
+        "authentication": "JWT + Supabase",
+        "database": "PostgreSQL + Supabase"
     }
-
-@app.get("/health/database")
-@limiter.limit("30/minute")
-async def database_health_check(request: Request):
-    """Database connectivity health check"""
-    try:
-        # Test database connection
-        is_connected = await db_manager.is_connected()
-        
-        if not is_connected:
-            raise HTTPException(status_code=503, detail="Database not connected")
-        
-        # Get basic metrics
-        user_count = await db_manager.get_user_count()
-        verified_count = await db_manager.get_verified_user_count()
-        table_count = await db_manager.get_table_count()
-        
-        return {
-            "database_status": "connected",
-            "database_type": "PostgreSQL",
-            "metrics": {
-                "total_users": user_count,
-                "verified_users": verified_count,
-                "tables": table_count
-            },
-            "last_checked": datetime.utcnow().isoformat()
-        }
-        
-    except Exception as e:
-        logger.error(f"Database health check failed: {str(e)}")
-        raise HTTPException(
-            status_code=503, 
-            detail=f"Database health check failed: {str(e)}"
-        )
 
 @app.post("/api/v1/recommendations", response_model=RecommendationResponse)
 @limiter.limit("30/minute")
 async def get_recommendations(
     request: Request,
     recommendation_request: RecommendationRequest,
-    user_data = Depends(verify_supabase_jwt)
+    current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    """Get personalized recommendations with JWT authentication"""
+    """
+    Get personalized recommendations with JWT authentication
+    
+    This endpoint:
+    1. Verifies JWT token from Supabase
+    2. Validates BITS email
+    3. Ensures user can only get their own recommendations
+    4. Generates AI-powered recommendations
+    5. Returns secure response
+    """
     try:
         # Ensure user can only get their own recommendations
-        if recommendation_request.user_id != user_data.get("sub"):
+        if recommendation_request.user_id != current_user.get("user_id"):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You can only request your own recommendations"
             )
         
+        # Verify user is active and verified
+        user_profile = current_user.get("profile", {})
+        if not user_profile.get("is_active", True):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account is not active"
+            )
+        
+        logger.info(f"Generating {recommendation_request.recommendation_type} recommendations for user {current_user['user_id']}")
+        
         # Get recommendations
         recommendations = await recommendation_engine.get_recommendations(
             user_id=recommendation_request.user_id,
             recommendation_type=recommendation_request.recommendation_type,
-            limit=recommendation_request.limit,
+            limit=recommendation_request.limit or 10,
             filters=recommendation_request.filters
         )
+        
+        logger.info(f"Generated {len(recommendations)} recommendations for user {current_user['user_id']}")
         
         return RecommendationResponse(
             user_id=recommendation_request.user_id,
             recommendations=recommendations,
-            algorithm_version="2.0",
-            generated_at=datetime.utcnow().isoformat()
+            algorithm_version="2.0-jwt",
+            generated_at=datetime.utcnow().isoformat(),
+            total_candidates=len(recommendations)
         )
         
     except ValueError as e:
+        logger.warning(f"Invalid request: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
     except HTTPException:
         raise
@@ -234,25 +234,40 @@ async def get_recommendations(
 async def submit_feedback(
     request: Request,
     feedback: UserFeedback,
-    user_data = Depends(verify_supabase_jwt)
+    current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    """Submit user feedback with JWT authentication"""
+    """
+    Submit user feedback with JWT authentication
+    
+    This endpoint:
+    1. Verifies JWT token
+    2. Validates user can only submit feedback for themselves
+    3. Records feedback for ML improvement
+    4. Updates recommendation algorithm
+    """
     try:
         # Ensure user can only submit feedback for themselves
-        if feedback.user_id != user_data.get("sub"):
+        if feedback.user_id != current_user.get("user_id"):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You can only submit feedback for yourself"
             )
         
+        logger.info(f"Recording feedback: {feedback.action} from {current_user['user_id']} to {feedback.target_user_id}")
+        
+        # Record feedback
         await recommendation_engine.record_feedback(
             user_id=feedback.user_id,
             target_user_id=feedback.target_user_id,
             action=feedback.action,
-            context=feedback.context
+            context=feedback.context or {}
         )
         
-        return {"status": "success", "message": "Feedback recorded"}
+        return {
+            "status": "success", 
+            "message": "Feedback recorded successfully",
+            "timestamp": datetime.utcnow().isoformat()
+        }
         
     except HTTPException:
         raise
@@ -260,11 +275,81 @@ async def submit_feedback(
         logger.error(f"Error recording feedback: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
+@app.get("/api/v1/stats/{user_id}")
+@limiter.limit("30/minute")
+async def get_user_stats(
+    user_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Get user recommendation statistics
+    """
+    try:
+        # Ensure user can only get their own stats
+        if user_id != current_user.get("user_id"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only access your own statistics"
+            )
+        
+        stats = await recommendation_engine.get_user_stats(user_id)
+        
+        return {
+            "user_id": user_id,
+            "stats": stats,
+            "generated_at": datetime.utcnow().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting user stats: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.get("/api/v1/auth/verify")
+@limiter.limit("60/minute")
+async def verify_auth(
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Verify authentication status and return user info
+    """
+    return {
+        "authenticated": True,
+        "user_id": current_user.get("user_id"),
+        "email": current_user.get("email"),
+        "campus": current_user.get("campus"),
+        "verified": current_user.get("profile", {}).get("verified", False),
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
 @app.exception_handler(HTTPException)
-async def http_exception_handler(request, exc):
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Enhanced error handling with logging"""
+    logger.warning(f"HTTP {exc.status_code}: {exc.detail} - {request.method} {request.url}")
+    
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.detail, "status": "error"}
+        content={
+            "detail": exc.detail, 
+            "status": "error",
+            "timestamp": datetime.utcnow().isoformat(),
+            "path": str(request.url.path)
+        }
+    )
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    """Handle unexpected errors"""
+    logger.error(f"Unexpected error: {str(exc)} - {request.method} {request.url}")
+    
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Internal server error",
+            "status": "error", 
+            "timestamp": datetime.utcnow().isoformat()
+        }
     )
 
 if __name__ == "__main__":
@@ -273,5 +358,6 @@ if __name__ == "__main__":
         "app.main:app",
         host="0.0.0.0",
         port=int(os.getenv("PORT", 8000)),
-        reload=os.getenv("ENVIRONMENT") == "development"
+        reload=os.getenv("ENVIRONMENT") == "development",
+        log_level="info"
     )

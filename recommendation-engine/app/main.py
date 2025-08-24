@@ -207,19 +207,27 @@ async def database_health_check(request: Request):
             return JSONResponse(
                 status_code=503,
                 content={
+                    "database_status": "disconnected",
                     "status": "unhealthy",
-                    "database": "disconnected",
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "error": "Database connection failed"
                 }
             )
+
+        # Get user count for sample data validation
+        try:
+            async with db_manager.pool.acquire() as connection:
+                user_count = await connection.fetchval("SELECT COUNT(*) FROM users;")
+        except:
+            user_count = 0
         
         return {
-            "status": "healthy",
-            "database": {
-                "connection": "active",
-                "response_time": "< 50ms",
-                "pool_status": "healthy"
-            },
+            "database_status": "connected",
+            "status": "healthy", 
+            "connection_info": "PostgreSQL via Supabase (pooled)",
+            "user_count": user_count,
+            "response_time": "< 50ms",
+            "pool_status": "healthy",
             "timestamp": datetime.utcnow().isoformat()
         }
     except Exception as e:
@@ -227,8 +235,8 @@ async def database_health_check(request: Request):
         return JSONResponse(
             status_code=503,
             content={
+                "database_status": "disconnected",
                 "status": "unhealthy",
-                "database": "error",
                 "error": str(e),
                 "timestamp": datetime.utcnow().isoformat()
             }

@@ -278,6 +278,7 @@ async def submit_feedback(
 @app.get("/api/v1/stats/{user_id}")
 @limiter.limit("30/minute")
 async def get_user_stats(
+    request: Request,
     user_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):

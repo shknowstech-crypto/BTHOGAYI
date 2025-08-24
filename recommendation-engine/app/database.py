@@ -43,6 +43,23 @@ class DatabaseManager:
             await self.pool.close()
             logger.info("Database connection pool closed")
     
+    async def health_check(self) -> bool:
+        """Check database connection health"""
+        try:
+            if not self.pool:
+                await self.connect()
+            
+            async with self.pool.acquire() as conn:
+                await conn.fetchval("SELECT 1")
+            return True
+        except Exception as e:
+            logger.error(f"Database health check failed: {e}")
+            return False
+    
+    async def close(self):
+        """Alias for disconnect for compatibility"""
+        await self.disconnect()
+    
     async def get_user_profile(self, user_id: str) -> Optional[Dict[str, Any]]:
         """Get complete user profile with interests and preferences"""
         if not self.pool:

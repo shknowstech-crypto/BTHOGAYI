@@ -7,6 +7,7 @@ import { Ship, ArrowLeft, Heart, Users, Sparkles, User, MessageCircle, Crown, St
 import { useAuthStore } from '@/lib/store'
 import { supabase } from '@/lib/supabase'
 import { UserProfile, Ship as ShipType } from '@/lib/supabase'
+import { AuthGuard } from '@/components/auth/auth-guard'
 
 interface ShipCandidate extends UserProfile {
   compatibility_score: number
@@ -315,7 +316,8 @@ export default function ShippingPage() {
   const currentCandidate = shipCandidates[currentIndex]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
+    <AuthGuard requireAuth={true} requireCompleteProfile={true}>
+      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
       <div className="container mx-auto px-6 py-8">
         {/* Header */}
         <motion.div
@@ -584,5 +586,6 @@ export default function ShippingPage() {
         </AnimatePresence>
       </div>
     </div>
+    </AuthGuard>
   )
 }

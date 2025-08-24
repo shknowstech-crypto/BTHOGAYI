@@ -5,6 +5,7 @@ import { GlassCard } from '@/components/ui/glass-card'
 import { GradientButton } from '@/components/ui/gradient-button'
 import { Settings, ArrowLeft, User, Bell, Shield, Palette } from 'lucide-react'
 import { useAuthStore } from '@/lib/store'
+import { AuthGuard } from '@/components/auth/auth-guard'
 
 export default function SettingsPage() {
   const { user, isAuthenticated } = useAuthStore()
@@ -32,7 +33,8 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
+    <AuthGuard requireAuth={true} requireCompleteProfile={true}>
+      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
       <div className="container mx-auto px-6 py-8">
         {/* Header */}
         <motion.div
@@ -163,5 +165,6 @@ export default function SettingsPage() {
         </motion.div>
       </div>
     </div>
+    </AuthGuard>
   )
 }

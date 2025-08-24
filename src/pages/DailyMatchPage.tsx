@@ -9,6 +9,7 @@ import { useAuthStore } from '@/lib/store'
 import { supabase, UserProfile, DailyMatch } from '@/lib/supabase'
 import { recommendationAPI } from '@/lib/recommendation-api'
 import type { RecommendationItem } from '@/lib/recommendation-api'
+import { AuthGuard } from '@/components/auth/auth-guard'
 
 interface DailyMatchProfile extends UserProfile, RecommendationItem {
   match_reason: string
@@ -326,7 +327,8 @@ export default function DailyMatchPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
+    <AuthGuard requireAuth={true} requireCompleteProfile={true}>
+      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
       <div className="container mx-auto px-6 py-8">
         {/* Header */}
         <motion.div
@@ -616,5 +618,6 @@ export default function DailyMatchPage() {
         </AnimatePresence>
       </div>
     </div>
+    </AuthGuard>
   )
 }

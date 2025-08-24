@@ -7,6 +7,7 @@ import { ArrowLeft, MessageCircle, Send, Phone, Instagram, ExternalLink, Clock, 
 import { useAuthStore } from '@/lib/store'
 import { supabase } from '@/lib/supabase'
 import { Connection, Message } from '@/lib/supabase'
+import { AuthGuard } from '@/components/auth/auth-guard'
 
 interface ChatConnection extends Connection {
   other_user: {
@@ -223,7 +224,8 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
+    <AuthGuard requireAuth={true} requireCompleteProfile={true}>
+      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
       <div className="container mx-auto px-6 py-8">
         {/* Header */}
         <motion.div
@@ -539,5 +541,6 @@ export default function MessagesPage() {
         </AnimatePresence>
       </div>
     </div>
+    </AuthGuard>
   )
 }

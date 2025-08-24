@@ -39,6 +39,22 @@ export function AuthGuard({
             return
           }
 
+          // Additional security: verify email domain for BITS access
+          const emailDomain = session.user.email!.split('@')[1]
+          const allowedDomains = [
+            'pilani.bits-pilani.ac.in',
+            'goa.bits-pilani.ac.in', 
+            'hyderabad.bits-pilani.ac.in',
+            'dubai.bits-pilani.ac.in'
+          ]
+          
+          if (!allowedDomains.includes(emailDomain)) {
+            await AuthService.signOut()
+            logout()
+            router.push('/auth?error=invalid-email')
+            return
+          }
+
           // Get or create user profile
           let profile = await AuthService.getUserProfile(session.user.id)
           

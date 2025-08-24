@@ -1,17 +1,38 @@
+# Core FastAPI and server
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
+starlette==0.27.0
+
+# Data models and validation
 pydantic==2.5.0
-numpy==1.25.2
-scikit-learn==1.3.2
-pandas==2.1.4
+
+# ML and data processing
+numpy==1.24.4
+scikit-learn==1.3.0
+pandas==2.0.3
+
+# Environment and config
 python-dotenv==1.0.0
+
+# HTTP client
 httpx==0.25.2
+
+# Authentication and security
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.6
-asyncpg==0.29.0
+
+# Database
+asyncpg==0.28.0
 sqlalchemy==2.0.23
 alembic==1.13.1
+
+# Rate limiting
 slowapi==0.1.9
+
+# File handling
 aiofiles==23.2.1
-starlette==0.27.0
+
+# Build tools (ensure setuptools is available)
+setuptools>=65.0.0
+wheel>=0.38.0

@@ -7,36 +7,33 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables. Please check your .env file.')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    flowType: 'pkce'
-  },
-  realtime: {
-    params: {
-      eventsPerSecond: 10,
-    },
-  },
-})
+// Singleton Supabase client
+let _supabase: ReturnType<typeof createClient> | null = null
 
-// Create a function to get a fresh client instance
-export const createSupabaseClient = () => {
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-      flowType: 'pkce'
-    },
-    realtime: {
-      params: {
-        eventsPerSecond: 10,
+export const getSupabaseClient = () => {
+  if (!_supabase) {
+    _supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        flowType: 'pkce',
       },
-    },
-  })
+      realtime: {
+        params: {
+          eventsPerSecond: 10,
+        },
+      },
+    })
+  }
+  return _supabase
 }
+
+// For legacy usage, export as 'supabase' too
+export const supabase = getSupabaseClient()
+
+// Backward compatibility function
+export const createSupabaseClient = getSupabaseClient
 
 // Database types
 export interface UserProfile {
@@ -59,6 +56,7 @@ export interface UserProfile {
     age_range: [number, number]
     looking_for: ('friends' | 'dating' | 'networking')[]
   }
+  interests?: string[] // Add interests field for profile creation
   email_verified: boolean
   student_id_verified: boolean
   photo_verified: boolean

@@ -37,6 +37,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Content-Security-Policy"] = "default-src 'self'"
+        
+        # Add rate limit headers for visibility
+        response.headers["X-Rate-Limit-Limit"] = "60"
+        response.headers["X-Rate-Limit-Window"] = "60"
+        
         if os.getenv("ENVIRONMENT") == "production":
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
@@ -147,8 +152,43 @@ async def health_check(request: Request):
         "status": "healthy",
         "service": "BITSPARK Recommendation Engine",
         "version": "2.0.0",
-        "environment": os.getenv("ENVIRONMENT", "development")
+        "environment": os.getenv("ENVIRONMENT", "development"),
+        "uptime": "running"
     }
+
+@app.get("/health/database")
+@limiter.limit("30/minute")
+async def database_health_check(request: Request):
+    """Database connectivity health check"""
+    try:
+        # Test database connection
+        is_connected = await db_manager.is_connected()
+        
+        if not is_connected:
+            raise HTTPException(status_code=503, detail="Database not connected")
+        
+        # Get basic metrics
+        user_count = await db_manager.get_user_count()
+        verified_count = await db_manager.get_verified_user_count()
+        table_count = await db_manager.get_table_count()
+        
+        return {
+            "database_status": "connected",
+            "database_type": "PostgreSQL",
+            "metrics": {
+                "total_users": user_count,
+                "verified_users": verified_count,
+                "tables": table_count
+            },
+            "last_checked": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Database health check failed: {str(e)}")
+        raise HTTPException(
+            status_code=503, 
+            detail=f"Database health check failed: {str(e)}"
+        )
 
 @app.post("/api/v1/recommendations", response_model=RecommendationResponse)
 @limiter.limit("30/minute")

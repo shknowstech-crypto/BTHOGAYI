@@ -32,6 +32,53 @@ class DatabaseManager:
             await self.pool.close()
             logger.info("Database connection pool closed")
     
+    async def is_connected(self) -> bool:
+        """Check if database connection is active"""
+        if not self.pool:
+            return False
+        try:
+            async with self.pool.acquire() as conn:
+                await conn.fetchval("SELECT 1")
+            return True
+        except Exception as e:
+            logger.error(f"Database connection check failed: {e}")
+            return False
+    
+    async def get_user_count(self) -> int:
+        """Get total number of users"""
+        try:
+            async with self.pool.acquire() as conn:
+                count = await conn.fetchval("SELECT COUNT(*) FROM users")
+                return count or 0
+        except Exception as e:
+            logger.error(f"Failed to get user count: {e}")
+            return 0
+    
+    async def get_verified_user_count(self) -> int:
+        """Get number of verified users"""
+        try:
+            async with self.pool.acquire() as conn:
+                count = await conn.fetchval("SELECT COUNT(*) FROM users WHERE verified = true")
+                return count or 0
+        except Exception as e:
+            logger.error(f"Failed to get verified user count: {e}")
+            return 0
+    
+    async def get_table_count(self) -> List[str]:
+        """Get list of tables in the database"""
+        try:
+            async with self.pool.acquire() as conn:
+                tables = await conn.fetch("""
+                    SELECT table_name 
+                    FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    ORDER BY table_name
+                """)
+                return [row['table_name'] for row in tables]
+        except Exception as e:
+            logger.error(f"Failed to get table list: {e}")
+            return []
+    
     async def get_user_profile(self, user_id: str) -> Optional[Dict[str, Any]]:
         """Get complete user profile with interests and preferences"""
         async with self.pool.acquire() as conn:

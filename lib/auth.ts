@@ -81,11 +81,9 @@ export class AuthService {
     
     const profileData = {
       id: user.id,
-      bits_email: user.email,
+      email: user.email,  // Use 'email' not 'bits_email'
       student_id: '', // Will be filled during onboarding
       display_name: user.user_metadata?.full_name || user.email.split('@')[0],
-      username: username,
-      profile_photo: user.user_metadata?.avatar_url,
       bio: '',
       age: null,
       gender: null,
@@ -119,10 +117,37 @@ export class AuthService {
     return data
   }
 
-  // Update user profile
+  // Update user profile via backend API (safer than direct Supabase)
   static async updateUserProfile(userId: string, updates: Partial<UserProfile>): Promise<UserProfile> {
     const supabase = createSupabaseClient()
     
+    // Get the current session token
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) {
+      throw new Error('Not authenticated')
+    }
+
+    // Try backend API first (recommended)
+    try {
+      const apiUrl = import.meta.env.VITE_RECOMMENDATION_API_URL || 'https://bthogayi.onrender.com'
+      const response = await fetch(`${apiUrl}/api/v1/profile`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify(updates)
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        return result.user
+      }
+    } catch (error) {
+      console.warn('Backend API failed, falling back to direct Supabase:', error)
+    }
+
+    // Fallback to direct Supabase update
     const updatesWithTimestamp = {
       ...updates,
       updated_at: new Date().toISOString()

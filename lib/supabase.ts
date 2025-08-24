@@ -40,27 +40,21 @@ export interface UserProfile {
   id: string
   email: string
   display_name: string
-  username: string
-  profile_photo?: string
   bio?: string
   age?: number
   gender?: 'male' | 'female' | 'other'
-  age?: number
-  gender?: 'male' | 'female' | 'other'
-  year: number
-  preferences: {
-    connect_similarity: 1 | -1
-    dating_similarity: 1 | -1
-    gender_preference?: 'male' | 'female' | 'any'
-    age_range: [number, number]
-    looking_for: ('friends' | 'dating' | 'networking')[]
-  }
-  is_active: boolean
-  profile_completed: boolean
-  last_seen: string
-  streak_count?: number
-  created_at: string
-  updated_at: string
+  year?: number
+  branch?: string
+  campus?: string
+  student_id?: string
+  verified?: boolean
+  profile_completed?: boolean
+  preferences?: any
+  privacy_settings?: any
+  subscription_tier?: string
+  last_active?: string
+  created_at?: string
+  updated_at?: string
 }
 
 export interface Connection {

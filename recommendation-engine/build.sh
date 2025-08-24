@@ -1,15 +1,19 @@
-# Render Build Script
-# This ensures compatibility with Render's build system
-
+#!/bin/bash
+# Render Build Script - Force Python 3.11
 set -e  # Exit on any error
 
 echo "🐍 Python version check..."
 python --version
+python3 --version
 
-echo "📦 Upgrading pip and setuptools..."
-pip install --upgrade pip setuptools wheel
+echo "📦 Upgrading build tools..."
+python -m pip install --upgrade pip==23.2.1
+pip install setuptools==68.2.2 wheel==0.41.2
 
 echo "📋 Installing requirements..."
 pip install -r requirements.txt
 
 echo "✅ Build completed successfully!"
+echo "🔍 Final environment check:"
+python -c "import sys; print(f'Python: {sys.version}')"
+python -c "import fastapi; print(f'FastAPI: {fastapi.__version__}')"

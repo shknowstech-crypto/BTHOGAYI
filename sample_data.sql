@@ -1,177 +1,196 @@
--- BITSPARK Sample Data Script for Supabase
+-- BITSPARK Sample Data Script - Aligned with Database Schema
 -- Run this script in the Supabase SQL Editor to populate your database with test data
 
--- First, let's create the tables if they don't exist
--- (Adjust table structure based on your actual schema)
-
--- Users table
-CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email VARCHAR(255) UNIQUE NOT NULL,
-    full_name VARCHAR(255),
-    profile_pic_url TEXT,
-    interests TEXT[], -- Array of interests
-    batch_year INTEGER,
-    department VARCHAR(100),
-    location VARCHAR(100),
-    bio TEXT,
-    verification_status VARCHAR(20) DEFAULT 'pending',
-    is_premium BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- User connections/friendships
-CREATE TABLE IF NOT EXISTS user_connections (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    connected_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    connection_type VARCHAR(20) DEFAULT 'friend', -- friend, blocked, pending
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(user_id, connected_user_id)
-);
-
--- User interactions (for recommendation engine)
-CREATE TABLE IF NOT EXISTS user_interactions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    target_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    interaction_type VARCHAR(20), -- view, like, message, connect
-    interaction_score DECIMAL(3,2) DEFAULT 1.0,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Feedback for recommendations
-CREATE TABLE IF NOT EXISTS recommendation_feedback (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    recommended_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    feedback_type VARCHAR(20), -- like, dislike, connect, block
-    feedback_score INTEGER, -- -1 to 1
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Insert sample users (BITS alumni/students)
-INSERT INTO users (email, full_name, interests, batch_year, department, location, bio, verification_status) VALUES 
+-- Insert sample users (using correct schema)
+INSERT INTO users (
+    bits_email, 
+    student_id, 
+    display_name, 
+    username, 
+    bio, 
+    age, 
+    gender, 
+    year, 
+    branch, 
+    campus,
+    email_verified,
+    student_id_verified,
+    photo_verified
+) VALUES 
 -- Verified BITS students/alumni
-('test1@pilani.bits-pilani.ac.in', 'Arjun Sharma', ARRAY['Machine Learning', 'Cricket', 'Photography'], 2024, 'Computer Science', 'Bangalore', 'CS grad passionate about AI and sports photography', 'verified'),
-('test2@goa.bits-pilani.ac.in', 'Priya Patel', ARRAY['Data Science', 'Travel', 'Music'], 2023, 'Electronics', 'Mumbai', 'Electronics engineer turned data scientist, love exploring new places', 'verified'),
-('test3@hyderabad.bits-pilani.ac.in', 'Rohit Kumar', ARRAY['Blockchain', 'Gaming', 'Fitness'], 2024, 'Computer Science', 'Hyderabad', 'Blockchain developer and gaming enthusiast', 'verified'),
-('test4@pilani.bits-pilani.ac.in', 'Sneha Gupta', ARRAY['UI/UX Design', 'Art', 'Books'], 2022, 'Design', 'Delhi', 'UX designer with a passion for digital art and literature', 'verified'),
-('test5@goa.bits-pilani.ac.in', 'Vikram Singh', ARRAY['DevOps', 'Trekking', 'Cooking'], 2023, 'Mechanical', 'Pune', 'DevOps engineer who loves mountains and experimenting with recipes', 'verified'),
-('test6@pilani.bits-pilani.ac.in', 'Ananya Reddy', ARRAY['Machine Learning', 'Dance', 'Volunteering'], 2024, 'Computer Science', 'Chennai', 'ML researcher and classical dancer, active in social causes', 'verified'),
-('test7@hyderabad.bits-pilani.ac.in', 'Karthik Menon', ARRAY['Cybersecurity', 'Chess', 'Podcasts'], 2023, 'Computer Science', 'Bangalore', 'Cybersecurity specialist, chess player, podcast enthusiast', 'verified'),
-('test8@goa.bits-pilani.ac.in', 'Ishita Jain', ARRAY['Product Management', 'Yoga', 'Startups'], 2022, 'Economics', 'Bangalore', 'Product manager at a fintech startup, yoga instructor on weekends', 'verified'),
-('test9@pilani.bits-pilani.ac.in', 'Aditya Kulkarni', ARRAY['Full Stack Development', 'Music Production', 'Gaming'], 2024, 'Computer Science', 'Mumbai', 'Full stack developer and music producer', 'verified'),
-('test10@hyderabad.bits-pilani.ac.in', 'Divya Nair', ARRAY['Data Science', 'Photography', 'Travel'], 2023, 'Mathematics', 'Kochi', 'Data scientist with a keen eye for photography and travel stories', 'verified'),
+('2021A7PS0001P@pilani.bits-pilani.ac.in', '2021A7PS0001P', 'Arjun Sharma', 'arjun_cs', 'CS grad passionate about AI and sports photography', 23, 'male', 4, 'Computer Science', 'Pilani', true, true, true),
+('2022A3PS0002G@goa.bits-pilani.ac.in', 'Priya Patel', '2022A3PS0002G', 'priya_ece', 'Electronics engineer turned data scientist, love exploring new places', 22, 'female', 3, 'Electronics & Communication', 'Goa', true, true, true),
+('2023A7PS0003H@hyderabad.bits-pilani.ac.in', '2023A7PS0003H', 'Rohit Kumar', 'rohit_dev', 'Blockchain developer and gaming enthusiast', 21, 'male', 2, 'Computer Science', 'Hyderabad', true, true, true),
+('2021A1PS0004P@pilani.bits-pilani.ac.in', '2021A1PS0004P', 'Sneha Gupta', 'sneha_design', 'UX designer with a passion for digital art and literature', 23, 'female', 4, 'Design', 'Pilani', true, true, true),
+('2022A2PS0005G@goa.bits-pilani.ac.in', '2022A2PS0005G', 'Vikram Singh', 'vikram_mech', 'DevOps engineer who loves mountains and experimenting with recipes', 22, 'male', 3, 'Mechanical Engineering', 'Goa', true, true, true),
+('2023A7PS0006P@pilani.bits-pilani.ac.in', '2023A7PS0006P', 'Ananya Reddy', 'ananya_ml', 'ML researcher and classical dancer, active in social causes', 21, 'female', 2, 'Computer Science', 'Pilani', true, true, true),
+('2022A7PS0007H@hyderabad.bits-pilani.ac.in', '2022A7PS0007H', 'Karthik Menon', 'karthik_sec', 'Cybersecurity specialist, chess player, podcast enthusiast', 22, 'male', 3, 'Computer Science', 'Hyderabad', true, true, true),
+('2021A8PS0008G@goa.bits-pilani.ac.in', '2021A8PS0008G', 'Ishita Jain', 'ishita_pm', 'Product manager at a fintech startup, yoga instructor on weekends', 23, 'female', 4, 'Economics', 'Goa', true, true, true),
+('2023A7PS0009P@pilani.bits-pilani.ac.in', '2023A7PS0009P', 'Aditya Kulkarni', 'aditya_full', 'Full stack developer and music producer', 21, 'male', 2, 'Computer Science', 'Pilani', true, true, true),
+('2022A4PS0010H@hyderabad.bits-pilani.ac.in', '2022A4PS0010H', 'Divya Nair', 'divya_data', 'Data scientist with a keen eye for photography and travel stories', 22, 'female', 3, 'Mathematics', 'Hyderabad', true, true, true);
 
--- A few non-BITS emails (should not get recommendations)
-('external1@gmail.com', 'Random User', ARRAY['Tech'], 2024, 'CS', 'Unknown', 'External user', 'pending'),
-('external2@yahoo.com', 'Another User', ARRAY['Music'], 2023, 'Arts', 'Unknown', 'Another external user', 'pending');
+-- Insert user interests
+INSERT INTO user_interests (user_id, interest, weight) 
+SELECT 
+    u.id, 
+    interest_data.interest,
+    interest_data.weight
+FROM users u
+CROSS JOIN (
+    VALUES 
+    ('2021A7PS0001P@pilani.bits-pilani.ac.in', 'Machine Learning', 1.0),
+    ('2021A7PS0001P@pilani.bits-pilani.ac.in', 'Cricket', 0.8),
+    ('2021A7PS0001P@pilani.bits-pilani.ac.in', 'Photography', 0.9),
+    
+    ('2022A3PS0002G@goa.bits-pilani.ac.in', 'Data Science', 1.0),
+    ('2022A3PS0002G@goa.bits-pilani.ac.in', 'Travel', 0.7),
+    ('2022A3PS0002G@goa.bits-pilani.ac.in', 'Music', 0.6),
+    
+    ('2023A7PS0003H@hyderabad.bits-pilani.ac.in', 'Blockchain', 1.0),
+    ('2023A7PS0003H@hyderabad.bits-pilani.ac.in', 'Gaming', 0.9),
+    ('2023A7PS0003H@hyderabad.bits-pilani.ac.in', 'Fitness', 0.7),
+    
+    ('2021A1PS0004P@pilani.bits-pilani.ac.in', 'UI/UX Design', 1.0),
+    ('2021A1PS0004P@pilani.bits-pilani.ac.in', 'Art', 0.8),
+    ('2021A1PS0004P@pilani.bits-pilani.ac.in', 'Books', 0.7),
+    
+    ('2022A2PS0005G@goa.bits-pilani.ac.in', 'DevOps', 1.0),
+    ('2022A2PS0005G@goa.bits-pilani.ac.in', 'Trekking', 0.9),
+    ('2022A2PS0005G@goa.bits-pilani.ac.in', 'Cooking', 0.6),
+    
+    ('2023A7PS0006P@pilani.bits-pilani.ac.in', 'Machine Learning', 1.0),
+    ('2023A7PS0006P@pilani.bits-pilani.ac.in', 'Dance', 0.8),
+    ('2023A7PS0006P@pilani.bits-pilani.ac.in', 'Volunteering', 0.7),
+    
+    ('2022A7PS0007H@hyderabad.bits-pilani.ac.in', 'Cybersecurity', 1.0),
+    ('2022A7PS0007H@hyderabad.bits-pilani.ac.in', 'Chess', 0.8),
+    ('2022A7PS0007H@hyderabad.bits-pilani.ac.in', 'Podcasts', 0.6),
+    
+    ('2021A8PS0008G@goa.bits-pilani.ac.in', 'Product Management', 1.0),
+    ('2021A8PS0008G@goa.bits-pilani.ac.in', 'Yoga', 0.8),
+    ('2021A8PS0008G@goa.bits-pilani.ac.in', 'Startups', 0.9),
+    
+    ('2023A7PS0009P@pilani.bits-pilani.ac.in', 'Full Stack Development', 1.0),
+    ('2023A7PS0009P@pilani.bits-pilani.ac.in', 'Music Production', 0.9),
+    ('2023A7PS0009P@pilani.bits-pilani.ac.in', 'Gaming', 0.7),
+    
+    ('2022A4PS0010H@hyderabad.bits-pilani.ac.in', 'Data Science', 1.0),
+    ('2022A4PS0010H@hyderabad.bits-pilani.ac.in', 'Photography', 0.9),
+    ('2022A4PS0010H@hyderabad.bits-pilani.ac.in', 'Travel', 0.8)
+) AS interest_data(email, interest, weight)
+WHERE u.bits_email = interest_data.email;
 
 -- Insert some connections (friendships)
-INSERT INTO user_connections (user_id, connected_user_id, connection_type) 
+INSERT INTO connections (user1_id, user2_id, connection_type, status, compatibility_score) 
 SELECT 
-    u1.id, u2.id, 'friend'
+    u1.id, u2.id, 'friend', 'accepted', 0.85
 FROM users u1, users u2 
-WHERE u1.email = 'test1@pilani.bits-pilani.ac.in' 
-  AND u2.email IN ('test2@goa.bits-pilani.ac.in', 'test3@hyderabad.bits-pilani.ac.in')
+WHERE u1.bits_email = '2021A7PS0001P@pilani.bits-pilani.ac.in' 
+  AND u2.bits_email IN ('2022A3PS0002G@goa.bits-pilani.ac.in', '2023A7PS0003H@hyderabad.bits-pilani.ac.in')
   AND u1.id != u2.id;
 
-INSERT INTO user_connections (user_id, connected_user_id, connection_type) 
+INSERT INTO connections (user1_id, user2_id, connection_type, status, compatibility_score) 
 SELECT 
-    u1.id, u2.id, 'friend'
+    u1.id, u2.id, 'friend', 'accepted', 0.78
 FROM users u1, users u2 
-WHERE u1.email = 'test4@pilani.bits-pilani.ac.in' 
-  AND u2.email IN ('test5@goa.bits-pilani.ac.in', 'test6@pilani.bits-pilani.ac.in')
+WHERE u1.bits_email = '2021A1PS0004P@pilani.bits-pilani.ac.in' 
+  AND u2.bits_email IN ('2022A2PS0005G@goa.bits-pilani.ac.in', '2023A7PS0006P@pilani.bits-pilani.ac.in')
   AND u1.id != u2.id;
 
--- Insert user interactions (for ML training data)
--- User 1 (Arjun) has viewed and liked users with similar interests
-INSERT INTO user_interactions (user_id, target_user_id, interaction_type, interaction_score)
+-- Insert some daily matches (AI recommendations)
+INSERT INTO daily_matches (user_id, matched_user_id, compatibility_score, algorithm_version, viewed, action)
 SELECT 
-    u1.id, u2.id, 'view', 1.0
+    u1.id, u2.id, 0.92, 'v1.2', true, 'connect'
 FROM users u1, users u2 
-WHERE u1.email = 'test1@pilani.bits-pilani.ac.in' 
-  AND u2.email IN ('test6@pilani.bits-pilani.ac.in', 'test7@hyderabad.bits-pilani.ac.in', 'test9@pilani.bits-pilani.ac.in')
+WHERE u1.bits_email = '2021A7PS0001P@pilani.bits-pilani.ac.in' 
+  AND u2.bits_email = '2023A7PS0006P@pilani.bits-pilani.ac.in'
   AND u1.id != u2.id;
 
-INSERT INTO user_interactions (user_id, target_user_id, interaction_type, interaction_score)
+INSERT INTO daily_matches (user_id, matched_user_id, compatibility_score, algorithm_version, viewed)
 SELECT 
-    u1.id, u2.id, 'like', 2.0
+    u1.id, u2.id, 0.87, 'v1.2', false
 FROM users u1, users u2 
-WHERE u1.email = 'test1@pilani.bits-pilani.ac.in' 
-  AND u2.email = 'test6@pilani.bits-pilani.ac.in'
+WHERE u1.bits_email = '2022A3PS0002G@goa.bits-pilani.ac.in' 
+  AND u2.bits_email IN ('2022A4PS0010H@hyderabad.bits-pilani.ac.in', '2021A8PS0008G@goa.bits-pilani.ac.in')
   AND u1.id != u2.id;
 
--- User 2 (Priya) interactions
-INSERT INTO user_interactions (user_id, target_user_id, interaction_type, interaction_score)
+-- Insert some ships (third-party matchmaking)
+INSERT INTO ships (shipper_id, user1_id, user2_id, message, status)
 SELECT 
-    u1.id, u2.id, 'view', 1.0
-FROM users u1, users u2 
-WHERE u1.email = 'test2@goa.bits-pilani.ac.in' 
-  AND u2.email IN ('test10@hyderabad.bits-pilani.ac.in', 'test8@goa.bits-pilani.ac.in')
-  AND u1.id != u2.id;
+    u1.id, u2.id, u3.id, 'You two would make a great pair! Both love ML and have similar interests.', 'pending'
+FROM users u1, users u2, users u3
+WHERE u1.bits_email = '2022A7PS0007H@hyderabad.bits-pilani.ac.in'  -- shipper
+  AND u2.bits_email = '2021A7PS0001P@pilani.bits-pilani.ac.in'     -- user1
+  AND u3.bits_email = '2023A7PS0006P@pilani.bits-pilani.ac.in'     -- user2
+  AND u1.id != u2.id AND u1.id != u3.id AND u2.id != u3.id;
 
--- Add some recommendation feedback
-INSERT INTO recommendation_feedback (user_id, recommended_user_id, feedback_type, feedback_score)
+-- Insert some notifications
+INSERT INTO notifications (user_id, type, title, message, data)
 SELECT 
-    u1.id, u2.id, 'like', 1
-FROM users u1, users u2 
-WHERE u1.email = 'test1@pilani.bits-pilani.ac.in' 
-  AND u2.email = 'test6@pilani.bits-pilani.ac.in'
-  AND u1.id != u2.id;
+    u.id, 
+    'match', 
+    'New Match!', 
+    'You have a new daily match with high compatibility!',
+    '{"match_id": "daily", "compatibility": 0.92}'::jsonb
+FROM users u 
+WHERE u.bits_email = '2021A7PS0001P@pilani.bits-pilani.ac.in';
 
-INSERT INTO recommendation_feedback (user_id, recommended_user_id, feedback_type, feedback_score)
+INSERT INTO notifications (user_id, type, title, message, data)
 SELECT 
-    u1.id, u2.id, 'dislike', -1
-FROM users u1, users u2 
-WHERE u1.email = 'test2@goa.bits-pilani.ac.in' 
-  AND u2.email = 'test5@goa.bits-pilani.ac.in'
-  AND u1.id != u2.id;
+    u.id, 
+    'ship', 
+    'Someone shipped you!', 
+    'A friend thinks you and another user would be perfect together.',
+    '{"ship_type": "friend_suggestion"}'::jsonb
+FROM users u 
+WHERE u.bits_email = '2023A7PS0006P@pilani.bits-pilani.ac.in';
 
--- Create indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_users_interests ON users USING GIN(interests);
-CREATE INDEX IF NOT EXISTS idx_user_connections_user_id ON user_connections(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_interactions_user_id ON user_interactions(user_id);
-CREATE INDEX IF NOT EXISTS idx_recommendation_feedback_user_id ON recommendation_feedback(user_id);
-
--- Verify data insertion
+-- Verify data insertion with proper metrics
 SELECT 
     'Total Users' as metric, 
     COUNT(*) as count 
 FROM users
 UNION ALL
 SELECT 
-    'BITS Users' as metric, 
+    'Verified BITS Users' as metric, 
     COUNT(*) as count 
 FROM users 
-WHERE email LIKE '%@%.bits-pilani.ac.in'
+WHERE verified = true
+UNION ALL
+SELECT 
+    'User Interests' as metric, 
+    COUNT(*) as count 
+FROM user_interests
 UNION ALL
 SELECT 
     'Connections' as metric, 
     COUNT(*) as count 
-FROM user_connections
+FROM connections
 UNION ALL
 SELECT 
-    'Interactions' as metric, 
+    'Daily Matches' as metric, 
     COUNT(*) as count 
-FROM user_interactions
+FROM daily_matches
 UNION ALL
 SELECT 
-    'Feedback Records' as metric, 
+    'Ships' as metric, 
     COUNT(*) as count 
-FROM recommendation_feedback;
+FROM ships
+UNION ALL
+SELECT 
+    'Notifications' as metric, 
+    COUNT(*) as count 
+FROM notifications;
 
 -- Display sample users for verification
 SELECT 
-    email, 
-    full_name, 
-    department, 
-    array_length(interests, 1) as interest_count,
-    verification_status
-FROM users 
-WHERE email LIKE '%@%.bits-pilani.ac.in'
+    bits_email, 
+    display_name, 
+    branch, 
+    campus,
+    year,
+    verified,
+    (SELECT COUNT(*) FROM user_interests ui WHERE ui.user_id = u.id) as interest_count
+FROM users u
 ORDER BY created_at
 LIMIT 5;

@@ -2,27 +2,35 @@ import { useState, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Upload, X, Camera, CheckCircle, AlertCircle, Image as ImageIcon } from 'lucide-react'
 import { GlassCard } from './glass-card'
+import { StorageService } from '@/lib/storage'
+import { useAuthStore } from '@/lib/store'
 
 interface PhotoUploadProps {
-  onPhotoUpload: (file: File) => void
+  onPhotoUpload?: (file: File) => void
+  onPhotoUploaded?: (url: string) => void
   currentPhoto?: string
   className?: string
   maxSize?: number // in MB
   acceptedTypes?: string[]
+  uploadType?: 'profile' | 'verification' | 'message'
 }
 
 export function PhotoUpload({ 
-  onPhotoUpload, 
+  onPhotoUpload,
+  onPhotoUploaded,
   currentPhoto, 
   className = '',
   maxSize = 5,
-  acceptedTypes = ['image/jpeg', 'image/png', 'image/webp']
+  acceptedTypes = ['image/jpeg', 'image/png', 'image/webp'],
+  uploadType = 'profile'
 }: PhotoUploadProps) {
+  const { user } = useAuthStore()
   const [isDragOver, setIsDragOver] = useState(false)
   const [preview, setPreview] = useState<string | null>(currentPhoto || null)
   const [error, setError] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [isVerified, setIsVerified] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const validateFile = (file: File): string | null => {
@@ -46,21 +54,62 @@ export function PhotoUpload({
       return
     }
 
-    // Create preview
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      setPreview(e.target?.result as string)
+    // Optimize image before upload
+    const processAndUpload = async () => {
+      setIsUploading(true)
+      setUploadProgress(0)
+      
+      try {
+        // Optimize image
+        setUploadProgress(20)
+        const optimizedFile = await StorageService.optimizeImage(file, 800, 0.8)
+        
+        // Create preview
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          setPreview(e.target?.result as string)
+        }
+        reader.readAsDataURL(optimizedFile)
+        
+        setUploadProgress(40)
+        
+        // Upload to Supabase Storage
+        if (user?.id) {
+          let uploadedUrl: string
+          
+          if (uploadType === 'profile') {
+            uploadedUrl = await StorageService.uploadProfilePhoto(user.id, optimizedFile)
+          } else if (uploadType === 'verification') {
+            uploadedUrl = await StorageService.uploadVerificationDoc(user.id, optimizedFile, 'photo_verification')
+          } else {
+            throw new Error('Invalid upload type')
+          }
+          
+          setUploadProgress(80)
+          
+          // Simulate verification process
+          await new Promise(resolve => setTimeout(resolve, 1000))
+          setUploadProgress(100)
+          
+          setIsVerified(true)
+          onPhotoUploaded?.(uploadedUrl)
+        }
+        
+        // Legacy callback
+        onPhotoUpload?.(optimizedFile)
+        
+      } catch (uploadError: any) {
+        console.error('Upload failed:', uploadError)
+        setError(uploadError.message || 'Upload failed. Please try again.')
+        setPreview(null)
+      } finally {
+        setIsUploading(false)
+        setUploadProgress(0)
+      }
     }
-    reader.readAsDataURL(file)
-
-    // Simulate verification process
-    setIsUploading(true)
-    setTimeout(() => {
-      setIsUploading(false)
-      setIsVerified(true)
-      onPhotoUpload(file)
-    }, 2000)
-  }, [onPhotoUpload, maxSize, acceptedTypes])
+    
+    processAndUpload()
+  }, [onPhotoUpload, onPhotoUploaded, maxSize, acceptedTypes, uploadType, user?.id])
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -193,12 +242,18 @@ export function PhotoUpload({
                         exit={{ opacity: 0, scale: 0.8 }}
                         className="bg-blue-500/80 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-2"
                       >
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                          className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
-                        />
-                        <span className="text-white text-sm font-medium">Verifying...</span>
+                        <div className="w-4 h-4 bg-white/20 rounded-full overflow-hidden">
+                          <motion.div
+                            className="h-full bg-white"
+                            initial={{ width: '0%' }}
+                            animate={{ width: `${uploadProgress}%` }}
+                            transition={{ duration: 0.3 }}
+                          />
+                        </div>
+                        <span className="text-white text-sm font-medium">
+                          {uploadProgress < 50 ? 'Optimizing...' : 
+                           uploadProgress < 90 ? 'Uploading...' : 'Verifying...'}
+                        </span>
                       </motion.div>
                     )}
                     

@@ -3,11 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { GlassCard } from '@/components/ui/glass-card'
 import { GradientButton } from '@/components/ui/gradient-button'
-import { ArrowLeft, MessageCircle, Send, Phone, Instagram, ExternalLink, Clock, Crown, Users, Heart } from 'lucide-react'
+import { ArrowLeft, MessageCircle, Users, Heart, Phone, Instagram } from 'lucide-react'
 import { useAuthStore } from '@/lib/store'
 import { supabase } from '@/lib/supabase'
-import { Connection, Message } from '@/lib/supabase'
+import { Connection } from '@/lib/supabase'
 import { AuthGuard } from '@/components/auth/auth-guard'
+import { RealTimeChat } from '@/components/messaging/real-time-chat'
+import { useRealtime } from '@/lib/realtime'
 
 interface ChatConnection extends Connection {
   other_user: {
@@ -16,22 +18,19 @@ interface ChatConnection extends Connection {
     profile_photo?: string
     campus: string
     branch: string
+    is_online?: boolean
   }
   message_count: number
-  last_message?: Message
   is_message_limit_reached: boolean
 }
 
 export default function MessagesPage() {
   const { user, isAuthenticated } = useAuthStore()
   const navigate = useNavigate()
+  const { subscribeToConnections } = useRealtime()
   const [connections, setConnections] = useState<ChatConnection[]>([])
   const [selectedConnection, setSelectedConnection] = useState<ChatConnection | null>(null)
-  const [messages, setMessages] = useState<Message[]>([])
-  const [newMessage, setNewMessage] = useState('')
   const [loading, setLoading] = useState(true)
-  const [showPlatformRedirect, setShowPlatformRedirect] = useState(false)
-  const [typing, setTyping] = useState(false)
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -39,80 +38,91 @@ export default function MessagesPage() {
       return
     }
     loadConnections()
+    
+    // Subscribe to real-time connection updates
+    const unsubscribe = subscribeToConnections((connection) => {
+      // Update connections list when new matches come in
+      loadConnections()
+    })
+    
+    return unsubscribe
   }, [isAuthenticated, navigate])
 
-  useEffect(() => {
-    if (selectedConnection) {
-      loadMessages(selectedConnection.id)
-      subscribeToMessages(selectedConnection.id)
-    }
-  }, [selectedConnection])
 
   const loadConnections = async () => {
     try {
       setLoading(true)
       
-      // Get all accepted connections
+      // Get all accepted connections with enhanced user data
       const { data: connectionsData, error } = await supabase
         .from('connections')
         .select(`
           *,
-          other_user:users!connections_user2_id_fkey(
+          user1:users!connections_user1_id_fkey(
             id,
             display_name,
             profile_photo,
             campus,
-            branch
+            branch,
+            last_seen,
+            is_active
           )
         `)
         .eq('user1_id', user?.id)
         .eq('status', 'accepted')
-        .eq('connection_type', 'friend')
 
       if (error) throw error
 
-      // Get connections where current user is user2
       const { data: connectionsData2, error: error2 } = await supabase
         .from('connections')
         .select(`
           *,
-          other_user:users!connections_user1_id_fkey(
+          user2:users!connections_user2_id_fkey(
             id,
             display_name,
             profile_photo,
             campus,
-            branch
+            branch,
+            last_seen,
+            is_active
           )
         `)
         .eq('user2_id', user?.id)
         .eq('status', 'accepted')
-        .eq('connection_type', 'friend')
 
       if (error2) throw error2
 
-      // Combine and process connections
-      const allConnections = [...(connectionsData || []), ...(connectionsData2 || [])]
+      // Process connections to get the "other user"
+      const processedConnections = [
+        ...(connectionsData || []).map((conn: any) => ({
+          ...conn,
+          other_user: {
+            ...conn.user1,
+            is_online: conn.user1.is_active && 
+              new Date(conn.user1.last_seen).getTime() > Date.now() - 5 * 60 * 1000 // 5 minutes
+          }
+        })),
+        ...(connectionsData2 || []).map((conn: any) => ({
+          ...conn,
+          other_user: {
+            ...conn.user2,
+            is_online: conn.user2.is_active && 
+              new Date(conn.user2.last_seen).getTime() > Date.now() - 5 * 60 * 1000
+          }
+        }))
+      ]
       
       // Get message counts for each connection
       const connectionsWithCounts = await Promise.all(
-        allConnections.map(async (conn: any) => {
+        processedConnections.map(async (conn: any) => {
           const { count: messageCount } = await supabase
             .from('messages')
             .select('*', { count: 'exact', head: true })
-            .or(`and(sender_id.eq.${conn.user1_id},receiver_id.eq.${conn.user2_id}),and(sender_id.eq.${conn.user2_id},receiver_id.eq.${conn.user1_id})`)
-
-          const { data: lastMessage } = await supabase
-            .from('messages')
-            .select('*')
-            .or(`and(sender_id.eq.${conn.user1_id},receiver_id.eq.${conn.user2_id}),and(sender_id.eq.${conn.user2_id},receiver_id.eq.${conn.user1_id})`)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single()
+            .eq('connection_id', conn.id)
 
           return {
             ...conn,
             message_count: messageCount || 0,
-            last_message: lastMessage,
             is_message_limit_reached: (messageCount || 0) >= 5
           }
         })
@@ -126,90 +136,6 @@ export default function MessagesPage() {
     }
   }
 
-  const loadMessages = async (connectionId: string) => {
-    try {
-      const connection = connections.find(c => c.id === connectionId)
-      if (!connection) return
-
-      const { data: messagesData, error } = await supabase
-        .from('messages')
-        .select('*')
-        .or(`and(sender_id.eq.${connection.user1_id},receiver_id.eq.${connection.user2_id}),and(sender_id.eq.${connection.user2_id},receiver_id.eq.${connection.user1_id})`)
-        .order('created_at', { ascending: true })
-
-      if (error) throw error
-      setMessages(messagesData || [])
-    } catch (error) {
-      console.error('Error loading messages:', error)
-    }
-  }
-
-  const subscribeToMessages = (connectionId: string) => {
-    const connection = connections.find(c => c.id === connectionId)
-    if (!connection) return
-
-    const subscription = supabase
-      .channel(`messages:${connectionId}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages',
-        filter: `or(and(sender_id.eq.${connection.user1_id},receiver_id.eq.${connection.user2_id}),and(sender_id.eq.${connection.user2_id},receiver_id.eq.${connection.user1_id}))`
-      }, (payload) => {
-        setMessages(prev => [...prev, payload.new as Message])
-      })
-      .subscribe()
-
-    return () => {
-      subscription.unsubscribe()
-    }
-  }
-
-  const sendMessage = async () => {
-    if (!selectedConnection || !newMessage.trim()) return
-
-    const connection = connections.find(c => c.id === selectedConnection.id)
-    if (!connection || connection.is_message_limit_reached) {
-      setShowPlatformRedirect(true)
-      return
-    }
-
-    try {
-      const { error } = await supabase
-        .from('messages')
-        .insert({
-                  sender_id: user?.id,
-        receiver_id: connection.other_user.id,
-          content: newMessage.trim(),
-          connection_id: connection.id,
-          created_at: new Date().toISOString()
-        })
-
-      if (error) throw error
-
-      setNewMessage('')
-      
-      // Update message count
-      await loadConnections()
-    } catch (error) {
-      console.error('Error sending message:', error)
-    }
-  }
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      sendMessage()
-    }
-  }
-
-  const getOtherUser = (connection: ChatConnection) => {
-    return connection.user1_id === user?.id ? connection.other_user : connection.other_user
-  }
-
-  const formatTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  }
 
   if (loading) {
     return (
@@ -292,32 +218,25 @@ export default function MessagesPage() {
                       >
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
-                            {otherUser.profile_photo ? (
+                          {connection.other_user.profile_photo ? (
                               <img
-                                src={otherUser.profile_photo}
-                                alt={otherUser.display_name}
+                              src={connection.other_user.profile_photo}
+                              alt={connection.other_user.display_name}
                                 className="w-full h-full rounded-full object-cover"
                               />
                             ) : (
                               <span className="text-white font-bold text-lg">
-                                {otherUser.display_name.charAt(0)}
+                              {connection.other_user.display_name.charAt(0)}
                               </span>
                             )}
                           </div>
                           
-                                          <div className="flex-1 min-w-0">
-                  <h3 className="text-white font-medium truncate">
-                    {otherUser.display_name}
-                  </h3>
-                  <p className="text-white/60 text-sm truncate">
-                    BITS {otherUser.campus} • {otherUser.branch}
-                  </p>
-                  {connection.last_message && (
-                    <p className="text-white/50 text-xs truncate mt-1">
-                      {(connection.last_message as any).content}
-                    </p>
-                  )}
-                </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-white font-medium truncate">
+                              {connection.other_user.display_name}
+                            </h3>
+                            {connection.other_user.is_online && (
 
                           <div className="text-right">
                             <div className="flex items-center gap-2 mb-1">
@@ -476,6 +395,11 @@ export default function MessagesPage() {
           </div>
         </div>
 
+        {/* Notification Center */}
+        <NotificationCenter 
+          isOpen={showNotifications}
+          onClose={() => setShowNotifications(false)}
+        />
         {/* Platform Redirect Modal */}
         <AnimatePresence>
           {showPlatformRedirect && (

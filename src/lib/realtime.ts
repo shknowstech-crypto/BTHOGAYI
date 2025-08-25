@@ -70,7 +70,7 @@ export class RealtimeService {
           onNotification(payload.new as Notification)
           
           // Show browser notification if permission granted
-          if (Notification.permission === 'granted') {
+          if ('Notification' in window && Notification.permission === 'granted') {
             const notif = payload.new as Notification
             new Notification(notif.title, {
               body: notif.message,

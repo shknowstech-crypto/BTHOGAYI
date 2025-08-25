@@ -1,343 +1,397 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Upload, X, Camera, CheckCircle, AlertCircle, Image as ImageIcon } from 'lucide-react'
-import { GlassCard } from './glass-card'
-import { StorageService } from '@/lib/storage'
+import { useNavigate } from 'react-router-dom'
+import { GlassCard } from '@/components/ui/glass-card'
+import { GradientButton } from '@/components/ui/gradient-button'
+import { ArrowLeft, MessageCircle, Users, Heart, Phone, Instagram } from 'lucide-react'
 import { useAuthStore } from '@/lib/store'
+import { supabase } from '@/lib/supabase'
+import { Connection } from '@/lib/supabase'
+import { AuthGuard } from '@/components/auth/auth-guard'
+import { RealTimeChat } from '@/components/messaging/real-time-chat'
+import { useRealtime } from '@/lib/realtime'
+import { RealTimeChat } from '@/components/messaging/real-time-chat'
+import { useRealtime } from '@/lib/realtime'
 
-interface PhotoUploadProps {
-  onPhotoUpload?: (file: File) => void
-  onPhotoUploaded?: (url: string) => void
-  currentPhoto?: string
-  className?: string
-  maxSize?: number // in MB
-  acceptedTypes?: string[]
-  uploadType?: 'profile' | 'verification' | 'message'
+interface ChatConnection extends Connection {
+  other_user: {
+    id: string
+    display_name: string
+    profile_photo?: string
+    campus: string
+    branch: string
+    is_online?: boolean
+    is_online?: boolean
+  }
+  is_message_limit_reached: boolean
 }
 
-export function PhotoUpload({ 
-  onPhotoUpload,
-  onPhotoUploaded,
-  currentPhoto, 
-  className = '',
-  maxSize = 5,
-  acceptedTypes = ['image/jpeg', 'image/png', 'image/webp'],
-  uploadType = 'profile'
-}: PhotoUploadProps) {
-  const { user } = useAuthStore()
-  const [isDragOver, setIsDragOver] = useState(false)
-  const [preview, setPreview] = useState<string | null>(currentPhoto || null)
-  const [error, setError] = useState<string | null>(null)
-  const [isUploading, setIsUploading] = useState(false)
-  const [isVerified, setIsVerified] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState(0)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+export default function MessagesPage() {
+  const { user, isAuthenticated } = useAuthStore()
+  const navigate = useNavigate()
+  const [connections, setConnections] = useState<ChatConnection[]>([])
 
-  const validateFile = (file: File): string | null => {
-    if (!acceptedTypes.includes(file.type)) {
-      return 'Please upload a valid image file (JPEG, PNG, or WebP)'
-    }
-    
-    if (file.size > maxSize * 1024 * 1024) {
-      return `File size must be less than ${maxSize}MB`
-    }
-    
-    return null
-  }
-
-  const handleFile = useCallback((file: File) => {
-    setError(null)
-    
-    const validationError = validateFile(file)
-    if (validationError) {
-      setError(validationError)
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/auth')
       return
     }
-
-    // Optimize image before upload
-    const processAndUpload = async () => {
-      setIsUploading(true)
-      setUploadProgress(0)
-      
-      try {
-        // Optimize image
-        setUploadProgress(20)
-        const optimizedFile = await StorageService.optimizeImage(file, 800, 0.8)
-        
-        // Create preview
-        const reader = new FileReader()
-        reader.onload = (e) => {
-          setPreview(e.target?.result as string)
-        }
-        reader.readAsDataURL(optimizedFile)
-        
-        setUploadProgress(40)
-        
-        // Upload to Supabase Storage
-        if (user?.id) {
-          let uploadedUrl: string
-          
-          if (uploadType === 'profile') {
-            uploadedUrl = await StorageService.uploadProfilePhoto(user.id, optimizedFile)
-          } else if (uploadType === 'verification') {
-            uploadedUrl = await StorageService.uploadVerificationDoc(user.id, optimizedFile, 'photo_verification')
-          } else {
-            throw new Error('Invalid upload type')
-          }
-          
-          setUploadProgress(80)
-          
-          // Simulate verification process
-          await new Promise(resolve => setTimeout(resolve, 1000))
-          setUploadProgress(100)
-          
-          setIsVerified(true)
-          onPhotoUploaded?.(uploadedUrl)
-        }
-        
-        // Legacy callback
-        onPhotoUpload?.(optimizedFile)
-        
-      } catch (uploadError: any) {
-        console.error('Upload failed:', uploadError)
-        setError(uploadError.message || 'Upload failed. Please try again.')
-        setPreview(null)
-      } finally {
-        setIsUploading(false)
-        setUploadProgress(0)
-      }
-    }
+    loadConnections()
     
-    processAndUpload()
-  }, [onPhotoUpload, onPhotoUploaded, maxSize, acceptedTypes, uploadType, user?.id])
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragOver(true)
-  }, [])
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragOver(false)
-  }, [])
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragOver(false)
+    // Subscribe to real-time connection updates
+    const unsubscribe = subscribeToConnections((connection) => {
+      // Update connections list when new matches come in
+      loadConnections()
+    })
     
-    const files = Array.from(e.dataTransfer.files)
-    if (files.length > 0) {
-      handleFile(files[0])
-    }
-  }, [handleFile])
+    return unsubscribe
+    
+    // Subscribe to real-time connection updates
+    const unsubscribe = subscribeToConnections((connection) => {
+      // Update connections list when new matches come in
+    })
+    
+    return unsubscribe
+  }, [isAuthenticated, navigate])
 
-  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    if (files.length > 0) {
-      handleFile(files[0])
-    }
-  }, [handleFile])
+      const { data: connectionsData, error } = await supabase
+        .from('connections')
+        .select(`
+          *,
+          user1:users!connections_user1_id_fkey(
+      // Get all accepted connections with enhanced user data
+            display_name,
+            profile_photo,
 
-  const handleRemovePhoto = useCallback(() => {
-    setPreview(null)
-    setError(null)
-    setIsVerified(false)
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
-  }, [])
-
-  const openFileDialog = useCallback(() => {
-    fileInputRef.current?.click()
-  }, [])
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full"
+        />
+      </div>
+    )
+  }
 
   return (
-    <div className={className}>
-      <AnimatePresence mode="wait">
-        {!preview ? (
-          <motion.div
-            key="upload-area"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.3 }}
-          >
-            <GlassCard 
-              className={`p-8 border-2 border-dashed transition-all duration-200 ${
-                isDragOver 
-                  ? 'border-purple-400 bg-purple-500/10' 
-                  : 'border-white/20 hover:border-white/40'
-              }`}
+    <AuthGuard requireAuth={true} requireCompleteProfile={true}>
+      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
+      <div className="container mx-auto px-6 py-8">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-between mb-8"
+        >
+          <div className="flex items-center gap-4">
+            <GradientButton
+              variant="secondary"
+              onClick={() => navigate('/dashboard')}
             >
-              <div
-                className="text-center cursor-pointer"
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                onClick={openFileDialog}
-              >
-                <motion.div
-                  animate={{ 
-                    scale: isDragOver ? 1.1 : 1,
-                    rotate: isDragOver ? 5 : 0
-                  }}
-                  transition={{ duration: 0.2 }}
-                  className="w-20 h-20 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-full flex items-center justify-center mx-auto mb-4"
-                >
-                  <Camera className="w-10 h-10 text-purple-400" />
-                </motion.div>
-                
-                <h3 className="text-xl font-bold text-white mb-2">
-                  Upload Profile Photo
-                </h3>
-                <p className="text-white/70 mb-4">
-                  Drag and drop your photo here, or click to browse
-                </p>
-                
-                <div className="space-y-2 text-sm text-white/50">
-                  <p>Supported formats: JPEG, PNG, WebP</p>
-                  <p>Maximum size: {maxSize}MB</p>
-                  <p>Recommended: Square image, 400x400px or larger</p>
-                </div>
+              <ArrowLeft className="w-5 h-5" />
+            </GradientButton>
+            <div>
+              <h1 className="text-3xl font-bold text-white mb-2">
+                Messages
+              </h1>
+              <p className="text-white/70">
+                Connect with your matches and build meaningful conversations
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-white/70">
+              <MessageCircle className="w-5 h-5 text-blue-400" />
+              <span>{connections.length} Connections</span>
+            </div>
+          </div>
+        </motion.div>
 
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="mt-6 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-xl text-white font-medium transition-all duration-200"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    openFileDialog()
-                  }}
-                >
-                  <Upload className="w-4 h-4 inline mr-2" />
-                  Choose Photo
-                </motion.button>
-              </div>
-            </GlassCard>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="preview-area"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.3 }}
-            className="relative"
-          >
-            <GlassCard className="p-0 overflow-hidden">
-              <div className="relative">
-                <img
-                  src={preview}
-                  alt="Profile preview"
-                  className="w-full h-64 object-cover"
-                />
-                
-                {/* Verification Status */}
-                <div className="absolute top-4 right-4">
-                  <AnimatePresence>
-                    {isUploading && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Connections List */}
+          <div className="lg:col-span-1">
+            <GlassCard className="p-6">
+              <h2 className="text-xl font-bold text-white mb-4">Your Connections</h2>
+              
+              {connections.length === 0 ? (
+                <div className="text-center py-8">
+                  <Users className="w-16 h-16 text-white/30 mx-auto mb-4" />
+                  <p className="text-white/70 mb-4">No connections yet</p>
+                  <GradientButton
+                    variant="romantic"
+                    onClick={() => navigate('/connect')}
+                  >
+                    Start Connecting
+                  </GradientButton>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {connections.map((connection) => {
+                    const otherUser = getOtherUser(connection)
+                    return (
                       <motion.div
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        className="bg-blue-500/80 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-2"
+                        key={connection.id}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setSelectedConnection(connection)}
+                        className={`p-4 rounded-xl cursor-pointer transition-all duration-200 ${
+                          selectedConnection?.id === connection.id
+                            ? 'bg-white/20 border border-white/30'
+                            : 'bg-white/5 hover:bg-white/10 border border-transparent'
+                        }`}
                       >
-                        <div className="w-4 h-4 bg-white/20 rounded-full overflow-hidden">
-                          <motion.div
-                            className="h-full bg-white"
-                            initial={{ width: '0%' }}
-                            animate={{ width: `${uploadProgress}%` }}
-                            transition={{ duration: 0.3 }}
-                          />
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
+                          {connection.other_user.profile_photo ? (
+                              <img
+                              src={connection.other_user.profile_photo}
+                              alt={connection.other_user.display_name}
+                                className="w-full h-full rounded-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-white font-bold text-lg">
+                              {connection.other_user.display_name.charAt(0)}
+                              </span>
+                            )}
+                          </div>
+                          
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-white font-medium truncate">
+                              {connection.other_user.display_name}
+                            </h3>
+                            {connection.other_user.is_online && (
+
+                          <div className="text-right">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-white/60 text-xs">
+                                {connection.message_count}/5
+                              </span>
+                              {connection.is_message_limit_reached && (
+                                <Crown className="w-4 h-4 text-yellow-400" />
+                              )}
+                            </div>
+                            {connection.last_message && (
+                              <span className="text-white/40 text-xs">
+                                {formatTime(connection.last_message.created_at)}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <span className="text-white text-sm font-medium">
-                          {uploadProgress < 50 ? 'Optimizing...' : 
-                           uploadProgress < 90 ? 'Uploading...' : 'Verifying...'}
-                        </span>
                       </motion.div>
-                    )}
-                    
-                    {isVerified && !isUploading && (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-green-500/80 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-2"
-                      >
-                        <CheckCircle className="w-4 h-4 text-white" />
-                        <span className="text-white text-sm font-medium">Verified</span>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                    )
+                  })}
                 </div>
+              )}
+            </GlassCard>
+          </div>
 
-                {/* Remove Button */}
-                <button
-                  onClick={handleRemovePhoto}
-                  className="absolute top-4 left-4 w-8 h-8 bg-red-500/80 hover:bg-red-500 backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-all duration-200 hover:scale-110"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Photo Info */}
-              <div className="p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-lg font-bold text-white">Profile Photo</h3>
+          {/* Chat Area */}
+          <div className="lg:col-span-2">
+            {selectedConnection ? (
+              <GlassCard className="h-[600px] flex flex-col">
+                {/* Chat Header */}
+                <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
+                      {selectedConnection.other_user.profile_photo ? (
+                        <img
+                          src={selectedConnection.other_user.profile_photo}
+                          alt={selectedConnection.other_user.display_name}
+                          className="w-full h-full rounded-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-white font-bold">
+                          {selectedConnection.other_user.display_name.charAt(0)}
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="text-white font-medium">
+                        {selectedConnection.other_user.display_name}
+                      </h3>
+                      <p className="text-white/60 text-sm">
+                        BITS {selectedConnection.other_user.campus}
+                      </p>
+                    </div>
+                  </div>
+                  
                   <div className="flex items-center gap-2">
-                    <ImageIcon className="w-4 h-4 text-purple-400" />
-                    <span className="text-white/70 text-sm">Photo uploaded</span>
+                    <span className="text-white/60 text-sm">
+                      {selectedConnection.message_count}/5 messages
+                    </span>
+                    {selectedConnection.is_message_limit_reached && (
+                      <div className="flex items-center gap-1 text-yellow-400">
+                        <Crown className="w-4 h-4" />
+                        <span className="text-xs">Limit Reached</span>
+                      </div>
+                    )}
                   </div>
                 </div>
-                
-                <div className="space-y-2 text-sm text-white/60">
-                  <p>✅ Photo meets size requirements</p>
-                  <p>✅ Format is supported</p>
-                  <p>✅ Ready for verification</p>
+
+                {/* Messages */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {messages.length === 0 ? (
+                    <div className="text-center py-8">
+                      <MessageCircle className="w-16 h-16 text-white/30 mx-auto mb-4" />
+                      <p className="text-white/70">Start the conversation!</p>
+                    </div>
+                  ) : (
+                    messages.map((message) => (
+                      <motion.div
+                        key={message.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`flex ${(message as any).sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div
+                          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
+                            (message as any).sender_id === user?.id
+                              ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                              : 'bg-white/10 text-white'
+                          }`}
+                        >
+                          <p className="text-sm">{message.content}</p>
+                          <p className={`text-xs mt-1 ${
+                            (message as any).sender_id === user?.id ? 'text-white/70' : 'text-white/50'
+                          }`}>
+                            {formatTime(message.created_at)}
+                          </p>
+                        </div>
+                      </motion.div>
+                    ))
+                  )}
                 </div>
 
-                <div className="mt-4 flex gap-3">
-                  <button
-                    onClick={openFileDialog}
-                    className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white transition-all duration-200"
-                  >
-                    Change Photo
-                  </button>
-                  <button
-                    onClick={handleRemovePhoto}
-                    className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-lg text-red-400 transition-all duration-200"
-                  >
-                    Remove
-                  </button>
+                {/* Message Input */}
+                <div className="p-4 border-t border-white/10">
+                  {selectedConnection.is_message_limit_reached ? (
+                    <div className="text-center py-4">
+                      <div className="flex items-center justify-center gap-2 text-yellow-400 mb-3">
+                        <Clock className="w-5 h-5" />
+                        <span className="font-medium">Message Limit Reached!</span>
+                      </div>
+                      <p className="text-white/70 text-sm mb-4">
+                        You've reached the 5-message limit. Continue your conversation on other platforms!
+                      </p>
+                      <GradientButton
+                        variant="romantic"
+                        onClick={() => setShowPlatformRedirect(true)}
+                      >
+                        Continue Elsewhere
+                      </GradientButton>
+                    </div>
+                  ) : (
+                    <div className="flex gap-3">
+                      <input
+                        type="text"
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        placeholder="Type your message..."
+                        className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/50"
+                        maxLength={500}
+                      />
+                      <GradientButton
+                          {connection.other_user.profile_photo ? (
+                        onClick={sendMessage}
+                              src={connection.other_user.profile_photo}
+                              alt={connection.other_user.display_name}
+                        <Send className="w-4 h-4" />
+                      </GradientButton>
+                    </div>
+                  )}
+                              {connection.other_user.display_name.charAt(0)}
+              </GlassCard>
+            ) : (
+              <GlassCard className="h-[600px] flex items-center justify-center">
+                <div className="text-center">
+                  <p className="text-white/70">
+                    Choose a connection from the list to start chatting
+                  </p>
                 </div>
-              </div>
-            </GlassCard>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              </GlassCard>
+            )}
+          </div>
+        </div>
 
-      {/* Error Message */}
-      <AnimatePresence>
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            className="mt-4 p-4 bg-red-500/20 border border-red-500/30 rounded-xl flex items-center gap-3"
-          >
-            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
-            <p className="text-red-300 text-sm">{error}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        {/* Notification Center */}
+        <NotificationCenter 
+          isOpen={showNotifications}
+          onClose={() => setShowNotifications(false)}
+        />
+        {/* Platform Redirect Modal */}
+        <AnimatePresence>
+          {showPlatformRedirect && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 flex items-center justify-center p-6 z-50"
+              onClick={() => setShowPlatformRedirect(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.8, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-white font-medium truncate">
+                              {connection.other_user.display_name}
+                            </h3>
+                            {connection.other_user.is_online && (
+                >
+                  <ExternalLink className="w-12 h-12 text-white" />
+                </motion.div>
 
-      {/* Hidden File Input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept={acceptedTypes.join(',')}
-        onChange={handleFileInput}
-        className="hidden"
-      />
+                <h2 className="text-3xl font-bold text-white mb-4">
+                  Continue Your Conversation! 💬
+                </h2>
+                <p className="text-white/90 mb-6">
+                  You've reached the 5-message limit. Continue chatting on your preferred platform!
+                </p>
+
+                <div className="space-y-3">
+                  <button
+                    onClick={() => window.open('https://instagram.com', '_blank')}
+                    className="w-full p-4 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 rounded-xl text-white font-medium transition-all duration-200 flex items-center justify-center gap-3"
+                  >
+                    <Instagram className="w-5 h-5" />
+                    Continue on Instagram
+                  </button>
+                  
+                  <button
+                    onClick={() => window.open('https://wa.me', '_blank')}
+                    className="w-full p-4 bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 rounded-xl text-white font-medium transition-all duration-200 flex items-center justify-center gap-3"
+                  >
+                    <MessageCircle className="w-5 h-5" />
+                    Continue on WhatsApp
+                  </button>
+                  
+                  <button
+                    onClick={() => setShowPlatformRedirect(false)}
+            <button 
+              onClick={() => setError(null)}
+              className="ml-auto text-red-400 hover:text-red-300"
+            >
+              ×
+            </button>
+                    className="w-full p-4 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-white font-medium transition-all duration-200"
+                  >
+                    Maybe Later
+                  <p className={isVerified ? 'text-green-400' : 'text-yellow-400'}>
+                    {isVerified ? '✅ Verified and uploaded' : '⏳ Ready for verification'}
+                  </p>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
+    </AuthGuard>
   )
-} 
+}

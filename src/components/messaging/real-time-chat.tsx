@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, Paperclip, Smile, MoreVertical, ExternalLink, Clock, Crown } from 'lucide-react'
+import { Send, Paperclip, ExternalLink, Clock, Crown, Image as ImageIcon } from 'lucide-react'
 import { GlassCard } from '@/components/ui/glass-card'
 import { GradientButton } from '@/components/ui/gradient-button'
 import { useRealtime } from '@/lib/realtime'
@@ -33,8 +33,10 @@ export function RealTimeChat({ connection, onMessageLimitReached }: RealTimeChat
   const [messageCount, setMessageCount] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false)
+  const [showPlatformRedirect, setShowPlatformRedirect] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const typingTimeoutRef = useRef<NodeJS.Timeout>()
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const isMessageLimitReached = messageCount >= 5
 
@@ -97,6 +99,7 @@ export function RealTimeChat({ connection, onMessageLimitReached }: RealTimeChat
 
       if (error) {
         if (error.message.includes('Message limit')) {
+          setShowPlatformRedirect(true)
           onMessageLimitReached?.()
           return
         }
@@ -179,6 +182,30 @@ export function RealTimeChat({ connection, onMessageLimitReached }: RealTimeChat
       setShowAttachmentMenu(false)
     } catch (error) {
       console.error('Error uploading file:', error)
+    }
+  }
+
+  const redirectToPlatform = async (platform: 'whatsapp' | 'instagram' | 'telegram') => {
+    try {
+      // Record platform redirection
+      await supabase
+        .from('platform_redirections')
+        .insert({
+          connection_id: connection.id,
+          platform: platform
+        })
+
+      // Open platform
+      const urls = {
+        whatsapp: import.meta.env.VITE_WHATSAPP_REDIRECT_URL || 'https://wa.me',
+        instagram: import.meta.env.VITE_INSTAGRAM_REDIRECT_URL || 'https://instagram.com',
+        telegram: import.meta.env.VITE_TELEGRAM_REDIRECT_URL || 'https://t.me'
+      }
+
+      window.open(urls[platform], '_blank')
+      setShowPlatformRedirect(false)
+    } catch (error) {
+      console.error('Error recording platform redirection:', error)
     }
   }
 
@@ -270,10 +297,10 @@ export function RealTimeChat({ connection, onMessageLimitReached }: RealTimeChat
                     : 'bg-white/10 text-white'
                 }`}
               >
-                {message.message_type === 'image' && message.metadata?.attachment_url ? (
+                {message.message_type === 'image' && (message as any).metadata?.attachment_url ? (
                   <div className="mb-2">
                     <img 
-                      src={message.metadata.attachment_url} 
+                      src={(message as any).metadata.attachment_url} 
                       alt="Attachment"
                       className="max-w-full rounded-lg"
                     />
@@ -347,7 +374,7 @@ export function RealTimeChat({ connection, onMessageLimitReached }: RealTimeChat
             <div className="flex gap-2">
               <GradientButton
                 variant="secondary"
-                onClick={() => window.open('https://wa.me', '_blank')}
+                onClick={() => redirectToPlatform('whatsapp')}
                 className="flex-1"
               >
                 <ExternalLink className="w-4 h-4 mr-2" />
@@ -355,7 +382,7 @@ export function RealTimeChat({ connection, onMessageLimitReached }: RealTimeChat
               </GradientButton>
               <GradientButton
                 variant="romantic"
-                onClick={() => window.open('https://instagram.com', '_blank')}
+                onClick={() => redirectToPlatform('instagram')}
                 className="flex-1"
               >
                 <ExternalLink className="w-4 h-4 mr-2" />
@@ -393,22 +420,13 @@ export function RealTimeChat({ connection, onMessageLimitReached }: RealTimeChat
                       exit={{ opacity: 0, scale: 0.9, y: 10 }}
                       className="absolute bottom-full left-0 mb-2 bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl p-2 min-w-32"
                     >
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0]
-                          if (file) handleFileUpload(file)
-                        }}
-                        className="hidden"
-                        id="image-upload"
-                      />
-                      <label
-                        htmlFor="image-upload"
-                        className="block px-3 py-2 text-white/80 hover:bg-white/10 rounded-lg cursor-pointer text-sm"
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="block w-full px-3 py-2 text-white/80 hover:bg-white/10 rounded-lg text-sm text-left"
                       >
-                        📷 Photo
-                      </label>
+                        <ImageIcon className="w-4 h-4 inline mr-2" />
+                        Photo
+                      </button>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -440,6 +458,82 @@ export function RealTimeChat({ connection, onMessageLimitReached }: RealTimeChat
           </div>
         )}
       </div>
+
+      {/* Hidden File Input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file) handleFileUpload(file)
+        }}
+        className="hidden"
+      />
+
+      {/* Platform Redirect Modal */}
+      <AnimatePresence>
+        {showPlatformRedirect && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center p-6 z-50"
+            onClick={() => setShowPlatformRedirect(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-gradient-to-br from-purple-600 to-pink-600 rounded-3xl p-8 max-w-md w-full text-center"
+            >
+              <motion.div
+                animate={{ 
+                  scale: [1, 1.2, 1],
+                  rotate: [0, 10, -10, 0]
+                }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-6"
+              >
+                <ExternalLink className="w-12 h-12 text-white" />
+              </motion.div>
+
+              <h2 className="text-3xl font-bold text-white mb-4">
+                Continue Your Conversation! 💬
+              </h2>
+              <p className="text-white/90 mb-6">
+                You've reached the 5-message limit. Continue chatting on your preferred platform!
+              </p>
+
+              <div className="space-y-3">
+                <button
+                  onClick={() => redirectToPlatform('whatsapp')}
+                  className="w-full p-4 bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 rounded-xl text-white font-medium transition-all duration-200 flex items-center justify-center gap-3"
+                >
+                  <span>💬</span>
+                  Continue on WhatsApp
+                </button>
+                
+                <button
+                  onClick={() => redirectToPlatform('instagram')}
+                  className="w-full p-4 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 rounded-xl text-white font-medium transition-all duration-200 flex items-center justify-center gap-3"
+                >
+                  <span>📷</span>
+                  Continue on Instagram
+                </button>
+                
+                <button
+                  onClick={() => setShowPlatformRedirect(false)}
+                  className="w-full p-4 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-white font-medium transition-all duration-200"
+                >
+                  Maybe Later
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </GlassCard>
   )
 }

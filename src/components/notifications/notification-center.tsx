@@ -108,22 +108,26 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
   }
 
   const playNotificationSound = () => {
-    // Create a subtle notification sound
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-    const oscillator = audioContext.createOscillator()
-    const gainNode = audioContext.createGain()
-    
-    oscillator.connect(gainNode)
-    gainNode.connect(audioContext.destination)
-    
-    oscillator.frequency.setValueAtTime(800, audioContext.currentTime)
-    oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1)
-    
-    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime)
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2)
-    
-    oscillator.start(audioContext.currentTime)
-    oscillator.stop(audioContext.currentTime + 0.2)
+    try {
+      // Create a subtle notification sound
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+      const oscillator = audioContext.createOscillator()
+      const gainNode = audioContext.createGain()
+      
+      oscillator.connect(gainNode)
+      gainNode.connect(audioContext.destination)
+      
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime)
+      oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1)
+      
+      gainNode.gain.setValueAtTime(0.1, audioContext.currentTime)
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2)
+      
+      oscillator.start(audioContext.currentTime)
+      oscillator.stop(audioContext.currentTime + 0.2)
+    } catch (error) {
+      // Ignore audio errors
+    }
   }
 
   const getNotificationIcon = (type: string) => {
@@ -231,7 +235,7 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
                         key={notification.id}
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        className={`p-4 hover:bg-white/5 transition-colors cursor-pointer ${
+                        className={`p-4 hover:bg-white/5 transition-colors cursor-pointer group ${
                           !notification.read ? 'bg-purple-500/10' : ''
                         }`}
                         onClick={() => !notification.read && markAsRead(notification.id)}
@@ -286,38 +290,4 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
       )}
     </AnimatePresence>
   )
-}
-
-// Hook for notification management
-export function useNotifications() {
-  const { user } = useAuthStore()
-  const [unreadCount, setUnreadCount] = useState(0)
-
-  useEffect(() => {
-    if (!user?.id) return
-
-    // Request notification permission
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission()
-    }
-
-    // Load initial unread count
-    const loadUnreadCount = async () => {
-      try {
-        const { count } = await supabase
-          .from('notifications')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .eq('read', false)
-
-        setUnreadCount(count || 0)
-      } catch (error) {
-        console.error('Error loading unread count:', error)
-      }
-    }
-
-    loadUnreadCount()
-  }, [user?.id])
-
-  return { unreadCount }
 }

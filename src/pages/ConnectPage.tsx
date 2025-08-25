@@ -3,220 +3,65 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { GlassCard } from '@/components/ui/glass-card'
 import { GradientButton } from '@/components/ui/gradient-button'
-import { AuthGuard } from '@/components/auth/auth-guard'
-import { Users, ArrowLeft, Heart, MessageCircle, UserPlus, X, Check, Star, MapPin, GraduationCap, User } from 'lucide-react'
+import { ArrowLeft, MessageCircle, Users, Heart, Phone, Instagram } from 'lucide-react'
 import { useAuthStore } from '@/lib/store'
 import { supabase } from '@/lib/supabase'
-import { UserProfile } from '@/lib/supabase'
-import { recommendationAPI } from '@/lib/recommendation-api'
-import type { RecommendationItem } from '@/lib/recommendation-api'
+import { Connection } from '@/lib/supabase'
+import { AuthGuard } from '@/components/auth/auth-guard'
+import { RealTimeChat } from '@/components/messaging/real-time-chat'
+import { useRealtime } from '@/lib/realtime'
+import { RealTimeChat } from '@/components/messaging/real-time-chat'
+import { useRealtime } from '@/lib/realtime'
 
-interface PotentialMatch extends UserProfile, RecommendationItem {
-  common_interests: string[]
+interface ChatConnection extends Connection {
+  other_user: {
+    id: string
+    display_name: string
+    profile_photo?: string
+    campus: string
+    branch: string
+    is_online?: boolean
+    is_online?: boolean
+  }
+  is_message_limit_reached: boolean
 }
 
-export default function ConnectPage() {
+export default function MessagesPage() {
   const { user, isAuthenticated } = useAuthStore()
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(true)
-  const [potentialMatches, setPotentialMatches] = useState<PotentialMatch[]>([])
-  const [currentIndex, setCurrentIndex] = useState(0)
-  const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null)
-  const [showMatch, setShowMatch] = useState(false)
-  const [matchedUser, setMatchedUser] = useState<PotentialMatch | null>(null)
+  const [connections, setConnections] = useState<ChatConnection[]>([])
 
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/auth')
       return
     }
-    loadPotentialMatches()
+    loadConnections()
+    
+    // Subscribe to real-time connection updates
+    const unsubscribe = subscribeToConnections((connection) => {
+      // Update connections list when new matches come in
+      loadConnections()
+    })
+    
+    return unsubscribe
+    
+    // Subscribe to real-time connection updates
+    const unsubscribe = subscribeToConnections((connection) => {
+      // Update connections list when new matches come in
+    })
+    
+    return unsubscribe
   }, [isAuthenticated, navigate])
 
-  const loadPotentialMatches = async () => {
-    try {
-      setLoading(true)
-      
-      if (!user?.id) return
-
-      // Use recommendation API for better matches
-      const response = await recommendationAPI.getRecommendations({
-        user_id: user.id,
-        recommendation_type: 'friends',
-        limit: 20,
-        filters: {
-          campus_filter: [user.campus],
-          active_recently: true,
-          min_compatibility_score: 0.3
-        }
-      })
-
-      // Get full user profiles for the recommended users
-      const userIds = response.recommendations.map(rec => rec.user_id)
-      const { data: userProfiles, error } = await supabase
-        .from('users')
-        .select('*')
-        .in('id', userIds)
-
-      if (error) throw error
-
-      // Merge recommendation data with user profiles
-      const matches = userProfiles.map(profile => {
-        const recommendation = response.recommendations.find(rec => rec.user_id === profile.id)
-        return {
-          ...profile,
-          ...recommendation,
-          common_interests: recommendation?.common_interests || []
-        }
-      })
-
-      setPotentialMatches(matches)
-    } catch (error) {
-      console.error('Error loading potential matches:', error)
-      // Fallback to old method if recommendation API fails
-      await loadPotentialMatchesFallback()
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadPotentialMatchesFallback = async () => {
-    try {
-      // Get users from the same campus with similar interests
-      const { data: users, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('campus', user?.campus)
-        .neq('id', user?.id)
-        .eq('is_active', true)
-        .limit(50)
-
-      if (error) throw error
-
-      // Calculate compatibility scores and filter by preferences
-      const matches = users
-        .map(u => ({
-          ...u,
-          compatibility_score: calculateCompatibility(u),
-          common_interests: getCommonInterests(u),
-          match_reasons: [`Same campus: ${u.campus}`],
-          explanation: `${Math.round(calculateCompatibility(u) * 100)}% compatibility based on interests and academic profile`,
-          confidence: calculateCompatibility(u)
-        }))
-        .filter(m => m.compatibility_score > 0.3) // Only show compatible matches
-        .sort((a, b) => b.compatibility_score - a.compatibility_score)
-
-      setPotentialMatches(matches)
-    } catch (error) {
-      console.error('Error in fallback matching:', error)
-    }
-  }
-
-  const calculateCompatibility = (otherUser: UserProfile): number => {
-    if (!user) return 0
-    
-    let score = 0
-    let factors = 0
-
-    // Interest similarity
-    if (user.interests && otherUser.interests) {
-      const common = user.interests.filter(i => otherUser.interests.includes(i))
-      score += (common.length / Math.max(user.interests.length, otherUser.interests.length)) * 0.4
-      factors += 0.4
-    }
-
-    // Year similarity (closer years = higher score)
-    const yearDiff = Math.abs((user.year || 1) - (otherUser.year || 1))
-    score += Math.max(0, (4 - yearDiff) / 4) * 0.3
-    factors += 0.3
-
-    // Branch similarity
-    if (user.branch === otherUser.branch) {
-      score += 0.2
-    }
-    factors += 0.2
-
-    // Activity level (last seen)
-    const lastSeen = new Date(otherUser.last_seen).getTime()
-    const now = Date.now()
-    const daysSince = (now - lastSeen) / (1000 * 60 * 60 * 24)
-    if (daysSince < 7) score += 0.1
-    factors += 0.1
-
-    return factors > 0 ? score / factors : 0
-  }
-
-  const getCommonInterests = (otherUser: UserProfile): string[] => {
-    if (!user?.interests || !otherUser.interests) return []
-    return user.interests.filter(i => otherUser.interests.includes(i))
-  }
-
-  const handleSwipe = async (direction: 'left' | 'right') => {
-    if (currentIndex >= potentialMatches.length) return
-
-    const currentUser = potentialMatches[currentIndex]
-    setSwipeDirection(direction)
-
-    if (direction === 'right') {
-      // Check if it's a mutual match
-      const isMatch = await checkForMatch(currentUser.id)
-      if (isMatch) {
-        setMatchedUser(currentUser)
-        setShowMatch(true)
-      }
-    }
-
-    // Move to next user
-    setTimeout(() => {
-      setCurrentIndex(prev => prev + 1)
-      setSwipeDirection(null)
-    }, 300)
-  }
-
-  const checkForMatch = async (otherUserId: string): Promise<boolean> => {
-    try {
-      // Check if the other user has already swiped right on current user
-      const { data: existingConnection } = await supabase
+      const { data: connectionsData, error } = await supabase
         .from('connections')
-        .select('*')
-        .or(`and(user1_id.eq.${otherUserId},user2_id.eq.${user?.id}),and(user1_id.eq.${user?.id},user2_id.eq.${otherUserId})`)
-        .eq('connection_type', 'friend')
-        .eq('status', 'pending')
-        .single()
-
-      if (existingConnection) {
-        // Update existing connection to accepted
-        await supabase
-          .from('connections')
-          .update({ status: 'accepted', responded_at: new Date().toISOString() })
-          .eq('id', existingConnection.id)
-        return true
-      } else {
-        // Create new connection request
-        await supabase
-          .from('connections')
-          .insert({
-            user1_id: user?.id,
-            user2_id: otherUserId,
-            connection_type: 'friend',
-            status: 'pending',
-            compatibility_score: potentialMatches[currentIndex].compatibility_score,
-            created_at: new Date().toISOString()
-          })
-        return false
-      }
-    } catch (error) {
-      console.error('Error checking for match:', error)
-      return false
-    }
-  }
-
-  const resetSwipe = () => {
-    setCurrentIndex(0)
-    setSwipeDirection(null)
-    setShowMatch(false)
-    setMatchedUser(null)
-  }
+        .select(`
+          *,
+          user1:users!connections_user1_id_fkey(
+      // Get all accepted connections with enhanced user data
+            display_name,
+            profile_photo,
 
   if (loading) {
     return (
@@ -229,118 +74,6 @@ export default function ConnectPage() {
       </div>
     )
   }
-
-  if (potentialMatches.length === 0) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
-        <div className="container mx-auto px-6 py-8">
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-between mb-8"
-          >
-            <div className="flex items-center gap-4">
-              <GradientButton
-                variant="secondary"
-                onClick={() => navigate('/dashboard')}
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </GradientButton>
-              <div>
-                <h1 className="text-3xl font-bold text-white mb-2">
-                  CONNECT - Find Friends
-                </h1>
-                <p className="text-white/70">
-                  Discover people with similar interests at BITS {user?.campus}
-                </p>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2 }}
-            className="text-center py-16"
-          >
-            <GlassCard className="p-12 max-w-2xl mx-auto">
-              <Users className="w-24 h-24 text-blue-400 mx-auto mb-6" />
-              <h2 className="text-3xl font-bold text-white mb-4">
-                No More Profiles to Show
-              </h2>
-              <p className="text-white/70 mb-8">
-                We've shown you all the potential friends in your area. 
-                Check back later for new connections!
-              </p>
-              <GradientButton
-                variant="romantic"
-                onClick={resetSwipe}
-              >
-                Start Over
-              </GradientButton>
-            </GlassCard>
-          </motion.div>
-        </div>
-      </div>
-    )
-  }
-
-  if (currentIndex >= potentialMatches.length) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
-        <div className="container mx-auto px-6 py-8">
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-between mb-8"
-          >
-            <div className="flex items-center gap-4">
-              <GradientButton
-                variant="secondary"
-                onClick={() => navigate('/dashboard')}
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </GradientButton>
-              <div>
-                <h1 className="text-3xl font-bold text-white mb-2">
-                  CONNECT - Find Friends
-                </h1>
-                <p className="text-white/70">
-                  Discover people with similar interests at BITS {user?.campus}
-                </p>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2 }}
-            className="text-center py-16"
-          >
-            <GlassCard className="p-12 max-w-2xl mx-auto">
-              <Users className="w-24 h-24 text-blue-400 mx-auto mb-6" />
-              <h2 className="text-3xl font-bold text-white mb-4">
-                You've Seen All Profiles!
-              </h2>
-              <p className="text-white/70 mb-8">
-                Great job exploring! You've reviewed all potential friends in your area. 
-                New people join every day, so check back soon!
-              </p>
-              <GradientButton
-                variant="romantic"
-                onClick={resetSwipe}
-              >
-                Start Over
-              </GradientButton>
-            </GlassCard>
-          </motion.div>
-        </div>
-      </div>
-    )
-  }
-
-  const currentUser = potentialMatches[currentIndex]
 
   return (
     <AuthGuard requireAuth={true} requireCompleteProfile={true}>
@@ -361,146 +94,240 @@ export default function ConnectPage() {
             </GradientButton>
             <div>
               <h1 className="text-3xl font-bold text-white mb-2">
-                CONNECT - Find Friends
+                Messages
               </h1>
               <p className="text-white/70">
-                Discover people with similar interests at BITS {user?.campus}
+                Connect with your matches and build meaningful conversations
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 text-white/70">
-            <Users className="w-5 h-5" />
-            <span>{currentIndex + 1} of {potentialMatches.length}</span>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-white/70">
+              <MessageCircle className="w-5 h-5 text-blue-400" />
+              <span>{connections.length} Connections</span>
+            </div>
           </div>
         </motion.div>
 
-        {/* User Card */}
-        <div className="flex justify-center mb-8">
-          <motion.div
-            key={currentUser.id}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            className="relative w-full max-w-md"
-          >
-            <GlassCard className="p-0 overflow-hidden">
-              {/* Profile Photo */}
-              <div className="relative h-96 bg-gradient-to-br from-blue-500 to-purple-500">
-                {currentUser.profile_photo ? (
-                  <img
-                    src={currentUser.profile_photo}
-                    alt={currentUser.display_name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <User className="w-24 h-24 text-white/50" />
-                  </div>
-                )}
-                
-                {/* Compatibility Score */}
-                <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1">
-                  <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                  <span className="text-white text-sm font-medium">
-                    {Math.round(currentUser.compatibility_score * 100)}%
-                  </span>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Connections List */}
+          <div className="lg:col-span-1">
+            <GlassCard className="p-6">
+              <h2 className="text-xl font-bold text-white mb-4">Your Connections</h2>
+              
+              {connections.length === 0 ? (
+                <div className="text-center py-8">
+                  <Users className="w-16 h-16 text-white/30 mx-auto mb-4" />
+                  <p className="text-white/70 mb-4">No connections yet</p>
+                  <GradientButton
+                    variant="romantic"
+                    onClick={() => navigate('/connect')}
+                  >
+                    Start Connecting
+                  </GradientButton>
                 </div>
-
-                {/* User Info Overlay */}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
-                  <h2 className="text-2xl font-bold text-white mb-2">
-                    {currentUser.display_name}, {currentUser.age || 'N/A'}
-                  </h2>
-                  <div className="flex items-center gap-4 text-white/80 text-sm mb-3">
-                    <div className="flex items-center gap-1">
-                      <MapPin className="w-4 h-4" />
-                      <span>BITS {currentUser.campus}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <GraduationCap className="w-4 h-4" />
-                      <span>{currentUser.branch}</span>
-                    </div>
-                  </div>
-                  {currentUser.bio && (
-                    <p className="text-white/90 text-sm line-clamp-2">
-                      {currentUser.bio}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Common Interests */}
-              {currentUser.common_interests.length > 0 && (
-                <div className="p-4 border-t border-white/10">
-                  <h3 className="text-white/80 text-sm font-medium mb-2">Common Interests:</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {currentUser.common_interests.slice(0, 5).map(interest => (
-                      <span
-                        key={interest}
-                        className="px-2 py-1 bg-purple-500/20 text-purple-300 text-xs rounded-full border border-purple-500/30"
+              ) : (
+                <div className="space-y-3">
+                  {connections.map((connection) => {
+                    const otherUser = getOtherUser(connection)
+                    return (
+                      <motion.div
+                        key={connection.id}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setSelectedConnection(connection)}
+                        className={`p-4 rounded-xl cursor-pointer transition-all duration-200 ${
+                          selectedConnection?.id === connection.id
+                            ? 'bg-white/20 border border-white/30'
+                            : 'bg-white/5 hover:bg-white/10 border border-transparent'
+                        }`}
                       >
-                        {interest}
-                      </span>
-                    ))}
-                  </div>
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
+                          {connection.other_user.profile_photo ? (
+                              <img
+                              src={connection.other_user.profile_photo}
+                              alt={connection.other_user.display_name}
+                                className="w-full h-full rounded-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-white font-bold text-lg">
+                              {connection.other_user.display_name.charAt(0)}
+                              </span>
+                            )}
+                          </div>
+                          
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-white font-medium truncate">
+                              {connection.other_user.display_name}
+                            </h3>
+                            {connection.other_user.is_online && (
+
+                          <div className="text-right">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-white/60 text-xs">
+                                {connection.message_count}/5
+                              </span>
+                              {connection.is_message_limit_reached && (
+                                <Crown className="w-4 h-4 text-yellow-400" />
+                              )}
+                            </div>
+                            {connection.last_message && (
+                              <span className="text-white/40 text-xs">
+                                {formatTime(connection.last_message.created_at)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    )
+                  })}
                 </div>
               )}
             </GlassCard>
+          </div>
 
-            {/* Swipe Animation */}
-            <AnimatePresence>
-              {swipeDirection && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  className={`absolute inset-0 flex items-center justify-center ${
-                    swipeDirection === 'right' ? 'text-green-400' : 'text-red-400'
-                  }`}
-                >
-                  <div className={`text-8xl ${
-                    swipeDirection === 'right' ? 'bg-green-500/20' : 'bg-red-500/20'
-                  } rounded-full p-8 border-4 ${
-                    swipeDirection === 'right' ? 'border-green-400' : 'border-red-400'
-                  }`}>
-                    {swipeDirection === 'right' ? <Check /> : <X />}
+          {/* Chat Area */}
+          <div className="lg:col-span-2">
+            {selectedConnection ? (
+              <GlassCard className="h-[600px] flex flex-col">
+                {/* Chat Header */}
+                <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
+                      {selectedConnection.other_user.profile_photo ? (
+                        <img
+                          src={selectedConnection.other_user.profile_photo}
+                          alt={selectedConnection.other_user.display_name}
+                          className="w-full h-full rounded-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-white font-bold">
+                          {selectedConnection.other_user.display_name.charAt(0)}
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="text-white font-medium">
+                        {selectedConnection.other_user.display_name}
+                      </h3>
+                      <p className="text-white/60 text-sm">
+                        BITS {selectedConnection.other_user.campus}
+                      </p>
+                    </div>
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
+                  
+                  <div className="flex items-center gap-2">
+                    <span className="text-white/60 text-sm">
+                      {selectedConnection.message_count}/5 messages
+                    </span>
+                    {selectedConnection.is_message_limit_reached && (
+                      <div className="flex items-center gap-1 text-yellow-400">
+                        <Crown className="w-4 h-4" />
+                        <span className="text-xs">Limit Reached</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Messages */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {messages.length === 0 ? (
+                    <div className="text-center py-8">
+                      <MessageCircle className="w-16 h-16 text-white/30 mx-auto mb-4" />
+                      <p className="text-white/70">Start the conversation!</p>
+                    </div>
+                  ) : (
+                    messages.map((message) => (
+                      <motion.div
+                        key={message.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`flex ${(message as any).sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div
+                          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
+                            (message as any).sender_id === user?.id
+                              ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                              : 'bg-white/10 text-white'
+                          }`}
+                        >
+                          <p className="text-sm">{message.content}</p>
+                          <p className={`text-xs mt-1 ${
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-white font-medium truncate">
+                              {connection.other_user.display_name}
+                            </h3>
+                            {connection.other_user.is_online && (
+
+                {/* Message Input */}
+                <div className="p-4 border-t border-white/10">
+                  {selectedConnection.is_message_limit_reached ? (
+                    <div className="text-center py-4">
+                      <div className="flex items-center justify-center gap-2 text-yellow-400 mb-3">
+                        <Clock className="w-5 h-5" />
+                        <span className="font-medium">Message Limit Reached!</span>
+                      </div>
+                      <p className="text-white/70 text-sm mb-4">
+                        You've reached the 5-message limit. Continue your conversation on other platforms!
+                      </p>
+                      <GradientButton
+                        variant="romantic"
+                        onClick={() => setShowPlatformRedirect(true)}
+                      >
+                        Continue Elsewhere
+                      </GradientButton>
+                    </div>
+                  ) : (
+                    <div className="flex gap-3">
+                      <input
+                        type="text"
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        placeholder="Type your message..."
+                        className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/50"
+                        maxLength={500}
+                      />
+                      <GradientButton
+                          {connection.other_user.profile_photo ? (
+                        onClick={sendMessage}
+                              src={connection.other_user.profile_photo}
+                              alt={connection.other_user.display_name}
+                        <Send className="w-4 h-4" />
+                      </GradientButton>
+                    </div>
+                  )}
+                              {connection.other_user.display_name.charAt(0)}
+              </GlassCard>
+            ) : (
+              <GlassCard className="h-[600px] flex items-center justify-center">
+                <div className="text-center">
+                  <p className="text-white/70">
+                    Choose a connection from the list to start chatting
+                  </p>
+                </div>
+              </GlassCard>
+            )}
+          </div>
         </div>
 
-        {/* Swipe Actions */}
-        <div className="flex justify-center gap-6">
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => handleSwipe('left')}
-            className="w-16 h-16 bg-red-500/20 hover:bg-red-500/30 border-2 border-red-400 rounded-full flex items-center justify-center text-red-400 transition-all duration-200"
-          >
-            <X className="w-8 h-8" />
-          </motion.button>
-
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => handleSwipe('right')}
-            className="w-16 h-16 bg-green-500/20 hover:bg-green-500/30 border-2 border-green-400 rounded-full flex items-center justify-center text-green-400 transition-all duration-200"
-          >
-            <Check className="w-8 h-8" />
-          </motion.button>
-        </div>
-
-        {/* Match Modal */}
+        {/* Notification Center */}
+        <NotificationCenter 
+          isOpen={showNotifications}
+          onClose={() => setShowNotifications(false)}
+        />
+        {/* Platform Redirect Modal */}
         <AnimatePresence>
-          {showMatch && matchedUser && (
+          {showPlatformRedirect && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 bg-black/50 flex items-center justify-center p-6 z-50"
-              onClick={() => setShowMatch(false)}
+              onClick={() => setShowPlatformRedirect(false)}
             >
               <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
@@ -517,35 +344,39 @@ export default function ConnectPage() {
                   transition={{ duration: 2, repeat: Infinity }}
                   className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-6"
                 >
-                  <Heart className="w-12 h-12 text-white" />
+                  <ExternalLink className="w-12 h-12 text-white" />
                 </motion.div>
 
                 <h2 className="text-3xl font-bold text-white mb-4">
-                  It's a Match! 🎉
+                  Continue Your Conversation! 💬
                 </h2>
                 <p className="text-white/90 mb-6">
-                  You and {matchedUser.display_name} are now connected! 
-                  Start a conversation and see where it leads.
+                  You've reached the 5-message limit. Continue chatting on your preferred platform!
                 </p>
 
-                <div className="flex gap-3">
-                  <GradientButton
-                    variant="secondary"
-                    onClick={() => setShowMatch(false)}
-                    className="flex-1"
+                <div className="space-y-3">
+                  <button
+                    onClick={() => window.open('https://instagram.com', '_blank')}
+                    className="w-full p-4 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 rounded-xl text-white font-medium transition-all duration-200 flex items-center justify-center gap-3"
                   >
-                    Keep Browsing
-                  </GradientButton>
-                  <GradientButton
-                    variant="romantic"
-                    onClick={() => {
-                      setShowMatch(false)
-                      navigate('/messages')
-                    }}
-                    className="flex-1"
+                    <Instagram className="w-5 h-5" />
+                    Continue on Instagram
+                  </button>
+                  
+                  <button
+                    onClick={() => window.open('https://wa.me', '_blank')}
+                    className="w-full p-4 bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 rounded-xl text-white font-medium transition-all duration-200 flex items-center justify-center gap-3"
                   >
-                    Send Message
-                  </GradientButton>
+                    <MessageCircle className="w-5 h-5" />
+                    Continue on WhatsApp
+                  </button>
+                  
+                  <button
+                    onClick={() => setShowPlatformRedirect(false)}
+                    className="w-full p-4 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-white font-medium transition-all duration-200"
+                  >
+                    Maybe Later
+                  </button>
                 </div>
               </motion.div>
             </motion.div>

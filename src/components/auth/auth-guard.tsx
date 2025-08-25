@@ -55,16 +55,20 @@ export function AuthGuard({
           }
 
           setAuthStep('Loading profile...')
+          console.log('🔧 AUTH GUARD: Loading profile for user:', session.user.id)
           
           // Get or create user profile
           let profile = await AuthService.getUserProfile(session.user.id)
+          console.log('🔧 AUTH GUARD: Profile result:', profile ? 'found' : 'not found')
           
           if (!profile) {
             setAuthStep('Creating profile...')
+            console.log('🔧 AUTH GUARD: Creating new profile...')
             try {
               profile = await AuthService.createUserProfile(session.user)
+              console.log('🔧 AUTH GUARD: Profile created successfully')
             } catch (createError: any) {
-              console.error('Profile creation failed:', createError)
+              console.error('❌ AUTH GUARD: Profile creation failed:', createError)
               await AuthService.signOut()
               logout()
               navigate('/auth?error=profile-creation-failed')
@@ -73,9 +77,21 @@ export function AuthGuard({
           }
 
           setAuthStep('Syncing with services...')
+          console.log('🔧 AUTH GUARD: Starting recommendation engine sync...')
           
-          // Sync with recommendation engine
-          await AuthService.syncWithRecommendationEngine(session.user.id)
+          // Sync with recommendation engine (with timeout)
+          try {
+            await Promise.race([
+              AuthService.syncWithRecommendationEngine(session.user.id),
+              new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Sync timeout')), 5000)
+              )
+            ])
+            console.log('✅ AUTH GUARD: Recommendation engine sync completed')
+          } catch (syncError) {
+            console.warn('⚠️ AUTH GUARD: Recommendation sync failed (continuing anyway):', syncError)
+            // Don't fail auth for sync issues
+          }
 
           setUser(profile)
 

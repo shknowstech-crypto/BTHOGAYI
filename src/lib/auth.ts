@@ -135,7 +135,7 @@ export class AuthService {
 
     console.log('✅ AUTH SUCCESS: Profile found:', {
       id: data.id,
-      email: data.bits_email,
+      email: data.email,
       displayName: data.display_name,
       profileCompleted: data.profile_completed
     })
@@ -316,6 +316,26 @@ export class AuthService {
     return data
   }
 
+  // Get user interests
+  static async getUserInterests(userId: string): Promise<string[]> {
+    try {
+      const { data, error } = await supabase
+        .from('user_interests')
+        .select('interest_name')
+        .eq('user_id', userId)
+
+      if (error) {
+        console.error('❌ AUTH ERROR: Failed to fetch user interests:', error)
+        return []
+      }
+
+      return data.map(item => item.interest_name)
+    } catch (error) {
+      console.error('❌ AUTH ERROR: Unexpected error fetching interests:', error)
+      return []
+    }
+  }
+
   // Update user interests
   static async updateUserInterests(userId: string, interests: string[]): Promise<void> {
     
@@ -330,8 +350,9 @@ export class AuthService {
     if (interests.length > 0) {
       const interestData = interests.map(interest => ({
         user_id: userId,
-        interest,
-        weight: 1.0
+        interest_name: interest,
+        proficiency_level: 'intermediate',
+        weight: 0.6  // Default weight for intermediate level
       }))
 
       const { error } = await supabase

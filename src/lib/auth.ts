@@ -182,8 +182,9 @@ export class AuthService {
     // Create profile data with explicit ID from auth user
     const profileData: any = {
       id: user.id, // Use the Supabase auth user ID
-      email: user.email, // Fixed: use 'email' field as per schema
+      bits_email: user.email, // Use bits_email field as per schema
       display_name: displayName,
+      username: this.generateUsername(displayName),
       campus: campus,
       year: additionalData?.year || 1,
       branch: additionalData?.branch || 'Computer Science',
@@ -193,25 +194,18 @@ export class AuthService {
       gender: additionalData?.gender || null,
       preferences: additionalData?.preferences || {
         age_range: [18, 30],
-        same_campus_only: false,
-        same_year_preference: false,
-        distance_km: 50
+        max_distance: 50,
+        dating_similarity: 1,
+        connect_similarity: 1,
+        looking_for: ["friends"]
       },
-      privacy_settings: {
-        show_age: true,
-        show_year: true,
-        show_branch: true,
-        discoverable: true,
-        show_last_active: false,
-        campus_visibility: "all_campuses"
-      },
-      verified: user.email_confirmed_at ? true : false, // Fixed: use 'verified' field
+      email_verified: user.email_confirmed_at ? true : false,
+      student_id_verified: false,
+      photo_verified: false,
       profile_completed: false,
-      last_active: new Date().toISOString(), // Fixed: use 'last_active' field
+      last_seen: new Date().toISOString(),
       is_active: true,
-      subscription_tier: 'free',
-      daily_swipes_remaining: 50,
-      super_swipes_remaining: 3
+      streak_count: 0
     }
 
     console.log('🔧 AUTH DEBUG: Attempting profile creation with data:', JSON.stringify(profileData, null, 2))
@@ -321,7 +315,7 @@ export class AuthService {
     try {
       const { data, error } = await supabase
         .from('user_interests')
-        .select('interest_name')
+        .select('interest')
         .eq('user_id', userId)
 
       if (error) {
@@ -329,7 +323,7 @@ export class AuthService {
         return []
       }
 
-      return data.map(item => item.interest_name)
+      return data.map(item => item.interest)
     } catch (error) {
       console.error('❌ AUTH ERROR: Unexpected error fetching interests:', error)
       return []
@@ -350,8 +344,7 @@ export class AuthService {
     if (interests.length > 0) {
       const interestData = interests.map(interest => ({
         user_id: userId,
-        interest_name: interest,
-        proficiency_level: 'intermediate',
+        interest: interest,
         weight: 0.6  // Default weight for intermediate level
       }))
 

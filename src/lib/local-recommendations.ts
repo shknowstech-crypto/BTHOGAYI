@@ -23,18 +23,39 @@ export class LocalRecommendationEngine {
 
   async getRecommendations(request: RecommendationRequest): Promise<RecommendationItem[]> {
     try {
-      // Get user profile
+      // Get user profile with weighted interests
       const { data: user } = await supabase
         .from('users')
         .select(`
           *,
-          user_interests (interest, weight)
+          user_interests (
+            interest_name, 
+            proficiency_level, 
+            weight,
+            interest_categories (
+              name,
+              category_weight
+            )
+          )
         `)
         .eq('id', request.user_id)
         .single()
 
       if (!user) {
         throw new Error('User not found')
+      }
+
+      // Transform user interests to include final weights
+      if (user.user_interests) {
+        user.interests = user.user_interests.map((interest: any) => ({
+          name: interest.interest_name,
+          proficiency_level: interest.proficiency_level,
+          weight: interest.weight,
+          category_weight: interest.interest_categories?.category_weight || 1.0,
+          final_weight: interest.weight * (interest.interest_categories?.category_weight || 1.0)
+        }))
+      } else {
+        user.interests = []
       }
 
       // Get potential matches
@@ -80,7 +101,15 @@ export class LocalRecommendationEngine {
       .from('users')
       .select(`
         *,
-        user_interests (interest, weight)
+        user_interests (
+          interest_name, 
+          proficiency_level, 
+          weight,
+          interest_categories (
+            name,
+            category_weight
+          )
+        )
       `)
       .eq('campus', user.campus)
       .eq('is_active', true)

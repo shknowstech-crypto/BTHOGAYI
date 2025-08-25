@@ -24,16 +24,44 @@ class RecommendationEngine:
             'agreeableness', 'neuroticism'
         ]
         
-        # Interest categories with weights
+        # Interest categories with weights (now loaded from database)
         self.interest_categories = {
-            'technology': ['coding', 'programming', 'ai', 'tech', 'software', 'hardware'],
-            'sports': ['football', 'cricket', 'basketball', 'tennis', 'gym', 'fitness'],
-            'arts': ['music', 'painting', 'photography', 'dance', 'theater', 'design'],
-            'academics': ['research', 'science', 'mathematics', 'physics', 'chemistry'],
-            'social': ['parties', 'networking', 'events', 'socializing', 'friends'],
-            'travel': ['travel', 'adventure', 'exploration', 'hiking', 'trekking'],
-            'food': ['cooking', 'food', 'restaurants', 'cuisine', 'baking'],
-            'entertainment': ['movies', 'tv', 'gaming', 'books', 'reading', 'anime']
+            'academic': {
+                'keywords': ['research', 'study', 'science', 'mathematics', 'physics', 'chemistry', 'biology', 'engineering'],
+                'weight': 1.2
+            },
+            'sports_fitness': {
+                'keywords': ['football', 'cricket', 'basketball', 'tennis', 'gym', 'fitness', 'workout', 'running', 'swimming'],
+                'weight': 1.1
+            },
+            'arts_creativity': {
+                'keywords': ['music', 'painting', 'photography', 'dance', 'theater', 'design', 'art', 'creative', 'drawing'],
+                'weight': 1.0
+            },
+            'technology': {
+                'keywords': ['coding', 'programming', 'ai', 'tech', 'software', 'hardware', 'development', 'data', 'ml'],
+                'weight': 1.1
+            },
+            'entertainment': {
+                'keywords': ['movies', 'tv', 'gaming', 'books', 'reading', 'anime', 'series', 'netflix', 'music'],
+                'weight': 1.0
+            },
+            'travel_culture': {
+                'keywords': ['travel', 'adventure', 'exploration', 'hiking', 'trekking', 'culture', 'languages', 'food'],
+                'weight': 1.0
+            },
+            'social_networking': {
+                'keywords': ['parties', 'networking', 'events', 'socializing', 'friends', 'meetups', 'community'],
+                'weight': 1.1
+            },
+            'lifestyle': {
+                'keywords': ['cooking', 'food', 'restaurants', 'cuisine', 'baking', 'fashion', 'lifestyle', 'wellness'],
+                'weight': 0.9
+            },
+            'career_professional': {
+                'keywords': ['career', 'professional', 'business', 'entrepreneurship', 'leadership', 'management', 'startup'],
+                'weight': 1.2
+            }
         }
         
         # Compatibility weights for different recommendation types
@@ -203,31 +231,52 @@ class RecommendationEngine:
         user: Dict[str, Any], 
         candidate: Dict[str, Any]
     ) -> Tuple[float, List[str]]:
-        """Calculate interest-based similarity"""
-        user_interests = set(user.get('interests', []))
-        candidate_interests = set(candidate.get('interests', []))
+        """Calculate weighted interest-based similarity with collaborative filtering"""
+        user_interests = user.get('interests', [])
+        candidate_interests = candidate.get('interests', [])
         
         if not user_interests or not candidate_interests:
             return 0.0, []
         
-        # Find common interests
-        common = user_interests.intersection(candidate_interests)
-        union = user_interests.union(candidate_interests)
+        # Convert to weighted vectors
+        user_vector = self._create_weighted_interest_vector(user_interests)
+        candidate_vector = self._create_weighted_interest_vector(candidate_interests)
         
-        # Jaccard similarity
-        jaccard_score = len(common) / len(union) if union else 0.0
+        # Calculate weighted cosine similarity
+        cosine_sim = self._weighted_cosine_similarity(user_vector, candidate_vector)
         
-        # Category-based similarity
-        user_categories = self._get_interest_categories(user_interests)
-        candidate_categories = self._get_interest_categories(candidate_interests)
+        # Find common interests with weights
+        common_interests = []
+        total_weight = 0.0
         
-        category_overlap = len(user_categories.intersection(candidate_categories))
-        category_score = category_overlap / max(len(user_categories), len(candidate_categories), 1)
+        for interest_data in user_interests:
+            interest_name = interest_data.get('name') if isinstance(interest_data, dict) else interest_data
+            user_weight = interest_data.get('weight', 1.0) if isinstance(interest_data, dict) else 1.0
+            
+            # Check if candidate has this interest
+            for candidate_interest in candidate_interests:
+                candidate_name = candidate_interest.get('name') if isinstance(candidate_interest, dict) else candidate_interest
+                candidate_weight = candidate_interest.get('weight', 1.0) if isinstance(candidate_interest, dict) else 1.0
+                
+                if interest_name.lower() == candidate_name.lower():
+                    common_interests.append(interest_name)
+                    # Weight common interests by both users' weights
+                    total_weight += (user_weight + candidate_weight) / 2.0
+                    break
         
-        # Combined score
-        final_score = 0.6 * jaccard_score + 0.4 * category_score
+        # Collaborative filtering boost
+        cf_boost = self._calculate_collaborative_boost(user, candidate)
         
-        return final_score, list(common)
+        # Category-based similarity with weights
+        user_categories = self._get_weighted_interest_categories(user_interests)
+        candidate_categories = self._get_weighted_interest_categories(candidate_interests)
+        
+        category_score = self._calculate_category_similarity(user_categories, candidate_categories)
+        
+        # Combined score with collaborative filtering
+        final_score = (0.5 * cosine_sim + 0.3 * category_score + 0.2 * cf_boost) * min(1.0, total_weight / len(common_interests) if common_interests else 0.5)
+        
+        return final_score, common_interests
     
     def _calculate_personality_compatibility(
         self, 
@@ -266,6 +315,117 @@ class RecommendationEngine:
         avg_compatibility = sum(compatibility_scores.values()) / len(compatibility_scores)
         
         return avg_compatibility, compatibility_scores
+    
+    def _create_weighted_interest_vector(self, interests: List) -> Dict[str, float]:
+        """Create weighted interest vector"""
+        vector = {}
+        for interest_data in interests:
+            if isinstance(interest_data, dict):
+                name = interest_data.get('name', '')
+                weight = interest_data.get('weight', 1.0)
+            else:
+                name = str(interest_data)
+                weight = 1.0
+            
+            vector[name.lower()] = weight
+        return vector
+    
+    def _weighted_cosine_similarity(self, vec1: Dict[str, float], vec2: Dict[str, float]) -> float:
+        """Calculate weighted cosine similarity between two interest vectors"""
+        all_interests = set(vec1.keys()) | set(vec2.keys())
+        
+        if not all_interests:
+            return 0.0
+        
+        dot_product = 0.0
+        norm_a = 0.0
+        norm_b = 0.0
+        
+        for interest in all_interests:
+            weight_a = vec1.get(interest, 0.0)
+            weight_b = vec2.get(interest, 0.0)
+            
+            dot_product += weight_a * weight_b
+            norm_a += weight_a ** 2
+            norm_b += weight_b ** 2
+        
+        if norm_a == 0.0 or norm_b == 0.0:
+            return 0.0
+        
+        return dot_product / (math.sqrt(norm_a) * math.sqrt(norm_b))
+    
+    def _get_weighted_interest_categories(self, interests: List) -> Dict[str, float]:
+        """Get weighted interest categories with category multipliers"""
+        categories = {}
+        
+        for interest_data in interests:
+            if isinstance(interest_data, dict):
+                interest_name = interest_data.get('name', '').lower()
+                base_weight = interest_data.get('weight', 1.0)
+            else:
+                interest_name = str(interest_data).lower()
+                base_weight = 1.0
+            
+            for category, category_info in self.interest_categories.items():
+                category_weight = category_info['weight']
+                keywords = category_info['keywords']
+                
+                if any(keyword in interest_name for keyword in keywords):
+                    # Apply both individual weight and category weight
+                    final_weight = base_weight * category_weight
+                    categories[category] = categories.get(category, 0.0) + final_weight
+        
+        return categories
+    
+    def _calculate_category_similarity(self, cat1: Dict[str, float], cat2: Dict[str, float]) -> float:
+        """Calculate weighted category similarity"""
+        all_categories = set(cat1.keys()) | set(cat2.keys())
+        
+        if not all_categories:
+            return 0.0
+        
+        dot_product = 0.0
+        norm_a = 0.0
+        norm_b = 0.0
+        
+        for category in all_categories:
+            weight_a = cat1.get(category, 0.0)
+            weight_b = cat2.get(category, 0.0)
+            
+            dot_product += weight_a * weight_b
+            norm_a += weight_a ** 2
+            norm_b += weight_b ** 2
+        
+        if norm_a == 0.0 or norm_b == 0.0:
+            return 0.0
+        
+        return dot_product / (math.sqrt(norm_a) * math.sqrt(norm_b))
+    
+    def _calculate_collaborative_boost(self, user: Dict[str, Any], candidate: Dict[str, Any]) -> float:
+        """Calculate collaborative filtering boost based on user behavior patterns"""
+        boost = 0.0
+        
+        # Check if users have similar connection patterns
+        user_connections = user.get('connection_count', 0)
+        candidate_connections = candidate.get('connection_count', 0)
+        
+        if user_connections > 0 and candidate_connections > 0:
+            connection_similarity = 1.0 - abs(user_connections - candidate_connections) / max(user_connections, candidate_connections)
+            boost += 0.3 * connection_similarity
+        
+        # Check activity patterns
+        user_activity = user.get('activity_score', 0.5)
+        candidate_activity = candidate.get('activity_score', 0.5)
+        activity_similarity = 1.0 - abs(user_activity - candidate_activity)
+        boost += 0.4 * activity_similarity
+        
+        # Check response patterns (if available)
+        user_response_rate = user.get('response_rate', 0.5)
+        candidate_response_rate = candidate.get('response_rate', 0.5)
+        response_similarity = 1.0 - abs(user_response_rate - candidate_response_rate)
+        boost += 0.3 * response_similarity
+        
+        return min(1.0, boost)
     
     def _calculate_lifestyle_compatibility(
         self, 

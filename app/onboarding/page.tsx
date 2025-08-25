@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { GlassCard } from '@/components/ui/glass-card'
@@ -53,7 +53,7 @@ export default function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState<OnboardingData>({
-    display_name: user?.display_name || '',
+    display_name: '',
     bio: '',
     age: 18,
     gender: 'male',
@@ -67,6 +67,49 @@ export default function OnboardingPage() {
     }
   })
 
+  // Load existing user data when component mounts
+  useEffect(() => {
+    const loadUserData = async () => {
+      if (!user?.id) return
+      
+      try {
+        console.log('🔧 ONBOARDING DEBUG: Loading existing user data for:', user.id)
+        const profile = await AuthService.getUserProfile(user.id)
+        
+        if (profile) {
+          console.log('🔧 ONBOARDING DEBUG: Found existing profile:', profile)
+          setFormData({
+            display_name: profile.display_name || user.display_name || '',
+            bio: profile.bio || '',
+            age: profile.age || 18,
+            gender: profile.gender || 'male',
+            year: profile.year || 1,
+            branch: profile.branch || '',
+            interests: [], // Will be loaded separately
+            preferences: {
+              connect_similarity: profile.preferences?.connect_similarity || 1,
+              dating_similarity: profile.preferences?.dating_similarity || 1,
+              looking_for: profile.preferences?.looking_for || ['friends']
+            }
+          })
+          
+          // Load user interests
+          const interests = await AuthService.getUserInterests(user.id)
+          if (interests.length > 0) {
+            setFormData(prev => ({
+              ...prev,
+              interests: interests
+            }))
+          }
+        }
+      } catch (error) {
+        console.error('❌ ONBOARDING ERROR: Failed to load user data:', error)
+      }
+    }
+    
+    loadUserData()
+  }, [user?.id])
+
   const steps = [
     { title: 'Basic Info', icon: User },
     { title: 'Academic', icon: GraduationCap },
@@ -75,9 +118,18 @@ export default function OnboardingPage() {
   ]
 
   const handleNext = () => {
+    console.log('🔧 ONBOARDING DEBUG: Next button clicked', {
+      currentStep,
+      stepsLength: steps.length,
+      isLastStep: currentStep === steps.length - 1,
+      isStepValid: isStepValid(),
+      formData: formData
+    })
+    
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1)
     } else {
+      console.log('🔧 ONBOARDING DEBUG: Calling handleComplete...')
       handleComplete()
     }
   }
@@ -91,17 +143,32 @@ export default function OnboardingPage() {
   const handleComplete = async () => {
     if (!user) return
     
+    console.log('🔧 ONBOARDING DEBUG: Starting profile completion...', {
+      userId: user.id,
+      formData: formData,
+      currentStep: currentStep,
+      stepsLength: steps.length
+    })
+    
     setIsLoading(true)
     try {
+      console.log('🔧 ONBOARDING DEBUG: Calling updateUserProfile with:', {
+        ...formData,
+        profile_completed: true
+      })
+      
       const updatedProfile = await AuthService.updateUserProfile(user.id, {
         ...formData,
         profile_completed: true
       })
       
+      console.log('✅ ONBOARDING SUCCESS: Profile updated:', updatedProfile)
+      
       updateUser(updatedProfile)
+      console.log('🔧 ONBOARDING DEBUG: Redirecting to dashboard...')
       router.push('/dashboard')
     } catch (error) {
-      console.error('Failed to complete onboarding:', error)
+      console.error('❌ ONBOARDING ERROR: Failed to complete onboarding:', error)
       // Show the actual error to help debug
       alert(`Failed to create profile: ${error instanceof Error ? error.message : 'Unknown error'}. Please check console for details.`)
     } finally {
@@ -119,15 +186,27 @@ export default function OnboardingPage() {
   }
 
   const toggleLookingFor = (option: 'friends' | 'dating' | 'networking') => {
-    setFormData(prev => ({
-      ...prev,
-      preferences: {
-        ...prev.preferences,
-        looking_for: prev.preferences.looking_for.includes(option)
-          ? prev.preferences.looking_for.filter(o => o !== option)
-          : [...prev.preferences.looking_for, option]
+    console.log('🔧 TOGGLE DEBUG: toggleLookingFor called', {
+      option,
+      currentLookingFor: formData.preferences.looking_for,
+      isIncluded: formData.preferences.looking_for.includes(option)
+    })
+    
+    setFormData(prev => {
+      const newLookingFor = prev.preferences.looking_for.includes(option)
+        ? prev.preferences.looking_for.filter(o => o !== option)
+        : [...prev.preferences.looking_for, option]
+      
+      console.log('🔧 TOGGLE DEBUG: New looking_for array:', newLookingFor)
+      
+      return {
+        ...prev,
+        preferences: {
+          ...prev.preferences,
+          looking_for: newLookingFor
+        }
       }
-    }))
+    })
   }
 
   const renderStep = () => {
@@ -401,18 +480,36 @@ export default function OnboardingPage() {
   }
 
   const isStepValid = () => {
+    let valid = false;
     switch (currentStep) {
       case 0:
-        return formData.display_name && formData.bio && formData.age >= 16
+        valid = !!(formData.display_name && formData.bio && formData.age >= 16)
+        break;
       case 1:
-        return formData.year && formData.branch
+        valid = !!(formData.year && formData.branch)
+        break;
       case 2:
-        return formData.interests.length >= 3
+        valid = formData.interests.length >= 3
+        break;
       case 3:
-        return formData.preferences.looking_for.length > 0
+        valid = formData.preferences.looking_for.length > 0
+        break;
       default:
-        return false
+        valid = false
     }
+    
+    console.log('🔧 VALIDATION DEBUG:', {
+      currentStep,
+      valid,
+      formData: currentStep === 3 ? {
+        lookingFor: formData.preferences.looking_for,
+        lookingForLength: formData.preferences.looking_for.length,
+        connectSim: formData.preferences.connect_similarity,
+        datingSim: formData.preferences.dating_similarity
+      } : `Step ${currentStep} data`
+    })
+    
+    return valid;
   }
 
   return (
